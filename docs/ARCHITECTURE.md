@@ -44,7 +44,7 @@ Use a **single monorepo**. The client and server must run the *exact same* rules
 ### Monorepo layout (pnpm workspaces)
 - `packages/rules`: **shared TS rules engine**, used by both client and server
   - Wraps **chessops** (`Crazyhouse` position: drops and pockets already implemented). After each capture, remove the captured piece from the capturer's pocket.
-  - Adds `BugshopState = { position, coins, clocks, prices, config }` and the actions `move | drop | buy | resign | offerDraw`.
+  - Adds `BugshopState = { position, coins, clocks, prices, config }` and the actions `move | drop | buy | claimVictory | resign | offerDraw`.
   - Clock and coin math are pure functions: `coins[me] = floor(opponentElapsedMs / msPerCoin) - spent[me]`.
   - Variant settings live in a config object (coin rate, prices, drop restrictions) so rule changes need no refactor.
 - `apps/web`: React + Vite + TypeScript
@@ -73,17 +73,33 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 
 ## Build order
 0. ~~Write this plan to `docs/ARCHITECTURE.md`~~ (done)
-1. `packages/rules` with Vitest tests (drops, no captures-to-pocket, coin accrual, buy validation, mate/stalemate).
+1. `packages/rules` with Vitest tests (drops incl. no pawns on 1st/8th rank, no captures-to-pocket, coin accrual, buying off-turn, Claim Victory, mate/stalemate).
 2. `apps/web` hotseat mode: board, pocket, shop panel and count-up clocks, fully offline.
 3. `apps/server` Colyseus room plus private invite links, then the matchmaking queue.
 4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS, GitHub Actions to deploy both.
 5. Vs-bot via Fairy-Stockfish WASM, plus the shop heuristic.
 6. Later: accounts (Better Auth), Glicko-2 ratings (`glicko2` npm), game replays.
 
-## Open rule questions (they live in config and do not block the architecture)
-- How does a game end other than mate/resign? Max game length, or coin/time caps? Stalemate, threefold repetition and the 50-move rule?
-- Piece prices, and whether pawns can be dropped on the 1st/8th rank or give mate by drop.
-- Can you buy only on your own turn, and does buying use up your move?
+## Game rules (decided)
+| Rule | Decision |
+|---|---|
+| Coins | You earn coins from the time your **opponent** uses: 1 coin per minute by default (configurable). |
+| Prices | Standard piece values: pawn 1, knight 3, bishop 3, rook 5, queen 9. |
+| Buying | Can be done **at any time, even on your opponent's turn**, and does **not** use your turn. The piece goes into your pocket. |
+| Dropping | Placing a piece from your pocket **uses your turn**. Drops follow bughouse rules: pawns can't be dropped on the 1st or 8th rank. Drops can give check and checkmate. |
+| Game end | Checkmate, resignation, **stalemate (draw)**, or the **"Claim Victory"** shop item. |
+| Claim Victory | A shop item for an absent or stalling opponent. A player with enough coins buys it and wins immediately. Because coins come from the opponent's elapsed time, an absent opponent eventually makes this affordable. Price is configurable (suggested starting point: 30 coins, i.e. 30 minutes of opponent time). |
+
+How this affects the implementation:
+- `buy` is a separate action from `move`/`drop`. The server accepts it from either player at any time and never flips the turn.
+- Coin balance = `floor(opponentElapsedMs / msPerCoin) - spent`. Buying is validated against the balance the server has computed at the moment the request arrives.
+- `claimVictory` is a shop action that ends the game. The server checks the balance and records the result as "won by Claim Victory".
+- The Fairy-Stockfish variant config uses crazyhouse drop rules (no pawn drops on the 1st/8th rank) with `capturesToHand = false`.
+
+## Still open
+- Threefold repetition and the 50-move rule: keep them as in chess, or drop them?
+- Final Claim Victory price, and whether it should scale with game length.
+- Should the bot know about Claim Victory, e.g. buy it if a human goes AFK?
 
 ## Verification
 - `pnpm -r test`: rules unit tests (including a scripted full game with purchases).
