@@ -73,8 +73,8 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 
 ## Build order
 0. ~~Write this plan to `docs/ARCHITECTURE.md`~~ (done)
-1. `packages/rules` with Vitest tests (drops incl. no pawns on 1st/8th rank, no captures-to-pocket, coin accrual, buying off-turn, Claim Victory, mate/stalemate).
-2. `apps/web` hotseat mode: board, pocket, shop panel and count-up clocks, fully offline.
+1. ~~`packages/rules` with Vitest tests~~ (done) (drops incl. no pawns on 1st/8th rank, no captures-to-pocket, coin accrual, buying off-turn, Claim Victory, mate/stalemate).
+2. ~~`apps/web` hotseat mode: board, pocket, shop panel and count-up clocks, fully offline.~~ (done)
 3. `apps/server` Colyseus room plus private invite links, then the matchmaking queue.
 4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS, GitHub Actions to deploy both.
 5. Vs-bot via Fairy-Stockfish WASM, plus the shop heuristic.

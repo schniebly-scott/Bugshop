@@ -1,0 +1,291 @@
+/* Bugshop forest theme. Day forest by default, night forest in dark mode. */
+:root {
+  color-scheme: light dark;
+  --bg: #e9eadb;
+  --bg-deep: #dcdfc8;
+  --panel: #f6f4e8;
+  --panel-edge: #c9c6a8;
+  --text: #24301f;
+  --text-soft: #5b6650;
+  --moss: #4f7a3a;
+  --moss-deep: #2f4a2a;
+  --bark: #6b4a2f;
+  --amber: #c98b2b;
+  --amber-soft: #f0d59b;
+  --danger: #a3402b;
+  --sq-light: #dfe5bf;
+  --sq-dark: #86a35f;
+  --last-move: rgba(201, 139, 43, 0.42);
+  --dest: rgba(47, 74, 42, 0.55);
+  --drop-dest: rgba(201, 139, 43, 0.5);
+  --check: rgba(196, 50, 30, 0.85);
+  --shadow: 0 1px 2px rgba(36, 48, 31, 0.15), 0 4px 14px rgba(36, 48, 31, 0.08);
+  --radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141a14;
+    --bg-deep: #0f140f;
+    --panel: #1d251c;
+    --panel-edge: #2f3b2c;
+    --text: #e3e8d6;
+    --text-soft: #9fac92;
+    --moss: #7fae5f;
+    --moss-deep: #a9cf8a;
+    --bark: #b48a62;
+    --amber: #e3a648;
+    --amber-soft: #4a3a1c;
+    --danger: #e0775f;
+    --sq-light: #a7b58a;
+    --sq-dark: #56703f;
+    --dest: rgba(20, 30, 15, 0.6);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--moss); }
+button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.primary { background: var(--moss); border-color: var(--moss); color: #fff; }
+button.armed { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+/* ---------- header / footer ---------- */
+.site-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 16px 6px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.site-header h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: 0.02em;
+  color: var(--moss-deep);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo {
+  width: 28px;
+  height: 28px;
+  background: url('/favicon.svg') center / contain no-repeat;
+}
+.tagline { margin: 0; color: var(--text-soft); }
+.site-footer {
+  max-width: 1180px;
+  margin: 8px auto 24px;
+  padding: 0 16px;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+/* ---------- layout ---------- */
+.hotseat {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 8px 16px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'top' 'board' 'bottom' 'controls';
+}
+@media (min-width: 900px) {
+  .hotseat {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: 'board top' 'board controls' 'board bottom';
+    align-items: start;
+  }
+}
+.area-top { grid-area: top; }
+.area-board { grid-area: board; }
+.area-bottom { grid-area: bottom; }
+.area-controls { grid-area: controls; }
+
+/* ---------- board ---------- */
+.board-frame {
+  width: min(100%, calc(100vh - 140px));
+  min-width: 260px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 10px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, var(--bark), #4b3220);
+  box-shadow: var(--shadow);
+}
+.board { width: 100%; height: 100%; }
+
+/* Checkerboard of moss: a8 is light, a1 dark. */
+cg-board {
+  background-color: var(--sq-light);
+  background-image: repeating-conic-gradient(var(--sq-dark) 0 25%, var(--sq-light) 0 50%);
+  background-size: 25% 25%;
+  border-radius: 4px;
+}
+cg-board square.last-move { background-color: var(--last-move); }
+cg-board square.selected { background-color: rgba(201, 139, 43, 0.55); }
+cg-board square.move-dest {
+  background: radial-gradient(var(--dest) 20%, transparent 22%);
+}
+cg-board square.oc.move-dest {
+  background: radial-gradient(transparent 0%, transparent 78%, var(--dest) 80%);
+}
+cg-board square.move-dest:hover { background: rgba(79, 122, 58, 0.35); }
+cg-board square.drop-dest {
+  background: radial-gradient(var(--drop-dest) 24%, transparent 26%);
+}
+cg-board square.check {
+  background: radial-gradient(ellipse at center, var(--check) 0%, rgba(196, 50, 30, 0.4) 40%, transparent 72%);
+}
+
+/* Coordinates (layout comes from chessground.base.css) */
+.cg-wrap coords coord { color: var(--moss-deep); font-weight: 600; }
+
+.status-line {
+  min-height: 2em;
+  margin-top: 8px;
+  text-align: center;
+}
+.status-line .error { color: var(--danger); }
+.status-line .result { color: var(--moss-deep); font-size: 1.1rem; }
+
+/* ---------- piece icons ---------- */
+.cg-wrap.piece-icon {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+}
+.cg-wrap.piece-icon piece { width: 100%; height: 100%; }
+
+/* ---------- player panel ---------- */
+.player-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 10px;
+}
+.player-panel.to-move { border-color: var(--moss); box-shadow: 0 0 0 2px var(--moss), var(--shadow); }
+.player-head { display: flex; align-items: center; gap: 8px; }
+.player-head h2 { margin: 0; font-size: 1.05rem; flex: 1; }
+.player-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--text-soft); }
+.player-dot.white { background: #fbfaf2; }
+.player-dot.black { background: #1d1d1b; }
+.clock {
+  font: 600 1.35rem/1 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bg-deep);
+}
+.to-move .clock { background: var(--moss); color: #fff; }
+
+.coins { display: flex; align-items: center; gap: 6px; }
+.coin-icon {
+  width: 14px;
+  height: 18px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: var(--amber);
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.18);
+}
+.coins strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.coin-label { color: var(--text-soft); }
+.coin-progress {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-deep);
+  overflow: hidden;
+}
+.coin-progress span { display: block; height: 100%; background: var(--amber); }
+
+.pocket { display: flex; gap: 4px; flex-wrap: wrap; }
+.pocket-slot {
+  position: relative;
+  padding: 2px;
+  background: var(--bg-deep);
+  border-color: transparent;
+  touch-action: none;
+}
+.pocket-slot.empty { opacity: 0.28; }
+.pocket-slot:disabled:not(.empty) { opacity: 0.7; }
+.pocket-slot:not(:disabled) { cursor: grab; }
+.pocket-slot.selected { border-color: var(--amber); box-shadow: 0 0 0 2px var(--amber); }
+.pocket-slot .count {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--moss);
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 18px;
+}
+
+.shop {
+  border-top: 1px dashed var(--panel-edge);
+  padding-top: 8px;
+}
+.shop h3 { margin: 0 0 6px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--bark); }
+.shop-items { display: flex; gap: 4px; flex-wrap: wrap; }
+.shop-item { display: flex; flex-direction: column; align-items: center; padding: 2px 6px 4px; }
+.shop-item .price { font-size: 0.8rem; font-weight: 600; color: var(--bark); }
+.claim { width: 100%; margin-top: 8px; border-color: var(--amber); }
+
+.game-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.toggle { display: flex; gap: 6px; align-items: center; color: var(--text-soft); }
+
+/* ---------- promotion dialog ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 10, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+.promotion {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.promotion p { margin: 0 0 8px; }
+.promotion-choices { display: flex; gap: 6px; }
+.promotion-choice .cg-wrap.piece-icon { width: 52px; height: 52px; }
