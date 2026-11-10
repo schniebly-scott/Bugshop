@@ -1,7 +1,7 @@
 # Build from the repo root:  docker build -f apps/server/Dockerfile .
 # Base images are pinned by digest (tag in front for humans; Dependabot updates both).
 
-FROM node:24.22.2-alpine@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8 AS deps
+FROM node:26.12.1-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797 AS deps
 WORKDIR /app
 RUN corepack enable
 # Manifests first so the dependency layer is cached between code changes.
@@ -12,7 +12,7 @@ COPY apps/server/package.json apps/server/
 # Production deps of the server and its workspace packages only; lockfile must match.
 RUN pnpm install --frozen-lockfile --prod --filter @bugshop/server...
 
-FROM node:24.22.2-alpine@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8
+FROM node:26.12.1-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=2567
