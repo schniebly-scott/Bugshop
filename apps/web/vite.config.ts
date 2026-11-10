@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // Serve the production security headers (CSP etc.) from vercel.json in `vite preview`
@@ -17,11 +17,24 @@ securityHeaders['Content-Security-Policy'] = securityHeaders['Content-Security-P
   '',
 );
 
-export default defineConfig({
-  plugins: [react()],
-  preview: { headers: securityHeaders },
-  build: {
-    // Never inline assets as data: URIs, so they load as plain files from 'self'.
-    assetsInlineLimit: 0,
-  },
+export default defineConfig(({ mode }) => {
+  // Allow the configured game server (http(s) for matchmaking, ws(s) for play) in preview.
+  const server = new URL(loadEnv(mode, process.cwd(), 'VITE_').VITE_SERVER_URL ?? 'http://localhost:2567');
+  const wsOrigin = `${server.protocol === 'https:' ? 'wss:' : 'ws:'}//${server.host}`;
+  const headers = {
+    ...securityHeaders,
+    'Content-Security-Policy': securityHeaders['Content-Security-Policy']!.replace(
+      "connect-src 'self'",
+      `connect-src 'self' ${server.origin} ${wsOrigin}`,
+    ),
+  };
+
+  return {
+    plugins: [react()],
+    preview: { headers },
+    build: {
+      // Never inline assets as data: URIs, so they load as plain files from 'self'.
+      assetsInlineLimit: 0,
+    },
+  };
 });

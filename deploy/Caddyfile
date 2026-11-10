@@ -1,0 +1,22 @@
+# Caddy gets and renews the TLS certificate for API_DOMAIN automatically.
+{$API_DOMAIN} {
+	# Matchmaking requests are tiny JSON bodies.
+	request_body {
+		max_size 16KB
+	}
+
+	reverse_proxy server:2567 {
+		# The server rate-limits by client IP and reads it from these headers.
+		# Set it from the real connection and drop any client-supplied values.
+		header_up X-Real-IP {remote_host}
+		header_up -X-Client-Ip
+	}
+
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	log
+}

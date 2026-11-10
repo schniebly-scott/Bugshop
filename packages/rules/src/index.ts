@@ -1,6 +1,6 @@
-export { type BugshopConfig, type ShopRole, DEFAULT_CONFIG, SHOP_ROLES, makeConfig } from './config.js';
-export { type ClockState, elapsedAt } from './clock.js';
-export { BugshopPosition, INITIAL_FEN, positionFromFen, positionToFen } from './position.js';
+export { type BugshopConfig, type ShopRole, DEFAULT_CONFIG, SHOP_ROLES, makeConfig } from './config.ts';
+export { type ClockState, elapsedAt } from './clock.ts';
+export { BugshopPosition, INITIAL_FEN, positionFromFen, positionToFen } from './position.ts';
 export {
   type Action,
   type ActionResult,
@@ -19,4 +19,4 @@ export {
   legalDests,
   pockets,
   turnOf,
-} from './game.js';
+} from './game.ts';

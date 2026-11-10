@@ -1,5 +1,6 @@
 import type { Color, Role, SquareName } from 'chessops';
 import type { GameState, RuleError, ShopRole } from '@bugshop/rules';
+import type { ActionRejection } from '@bugshop/protocol';
 
 /** Board-only FEN for chessground (strips the `[pockets]` part). */
 export const boardFen = (fen: string): string => fen.split(' ')[0]!.split('[')[0]!;
@@ -38,7 +39,10 @@ export const ROLE_NAMES: Record<Role, string> = {
 
 export const ROLE_LETTER: Record<ShopRole, string> = { pawn: 'P', knight: 'N', bishop: 'B', rook: 'R', queen: 'Q' };
 
-const ERROR_TEXT: Record<RuleError, string> = {
+const ERROR_TEXT: Record<ActionRejection | 'network', string> = {
+  'not-started': 'The game has not started yet.',
+  'not-a-player': 'You are not playing in this game.',
+  network: 'Could not reach the server. Try again.',
   'game-over': 'The game is already over.',
   'not-your-turn': "It isn't your turn.",
   'invalid-uci': 'That move could not be understood.',
@@ -49,7 +53,7 @@ const ERROR_TEXT: Record<RuleError, string> = {
   'draw-already-offered': 'You already offered a draw.',
   'no-draw-offer': 'There is no draw offer to answer.',
 };
-export const errorText = (e: RuleError): string => ERROR_TEXT[e];
+export const errorText = (e: RuleError | ActionRejection | 'network'): string => ERROR_TEXT[e] ?? ERROR_TEXT.network;
 
 export const resultText = (state: GameState): string | undefined => {
   const w = state.winner ? colorName(state.winner) : undefined;

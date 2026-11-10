@@ -49,13 +49,14 @@ Use a **single monorepo**. The client and server must run the *exact same* rules
   - Variant settings live in a config object (coin rate, prices, drop restrictions) so rule changes need no refactor.
 - `apps/web`: React + Vite + TypeScript
   - Board: **chessground** (lichess board, already supports drag-to-drop from a pocket). Use **@lichess-org/chessground** styles for pieces.
-  - State: Zustand. Networking: `colyseus.js` client.
-  - Routes (React Router): `/`, `/play/hotseat`, `/play/bot`, `/game/:roomId` (private link), `/queue`.
+  - State: React state plus `useSyncExternalStore` for the online session (no state library needed). Networking: `@colyseus/sdk`.
+  - Routes (tiny History-API router in `src/router.ts`): `/` (home), `/hotseat`, `/g/:roomId` (online game; also the invite link). `/bot` is planned.
   - Bot: **Fairy-Stockfish WASM** (`fairy-stockfish-nnue.wasm` / `ffish`) in a Web Worker. Define a custom variant in `variants.ini` (`pieceDrops = true`, `capturesToHand = false`) and pass the pocket in the FEN. The bot's shopping uses a simple heuristic in TS (e.g. buy the best piece it can afford when its eval drops). This costs **$0 in server CPU**.
-- `apps/server`: Node + **Colyseus** (MIT). It provides rooms, matchmaking (`joinOrCreate`), private rooms (`create` → share ID), state sync and reconnection, so none of that is hand-written.
+- `packages/protocol`: message names and payload types shared by client and server (types and constants only).
+- `apps/server`: Node + **Colyseus** 0.18 (MIT). Node 24 runs the TypeScript directly, with no build step. It provides rooms, matchmaking (`joinOrCreate`), private rooms (`create` → share ID), state sync and reconnection, so none of that is hand-written.
   - `BugshopRoom` validates every action through `packages/rules`. Clients never send clock values.
   - The clock stores `turnStartedAt` timestamps. Clients interpolate locally for display, and the server is the authority.
-  - SQLite stores finished games (PGN-like move list plus buy events) for future replays and ratings.
+  - Planned: SQLite stores finished games (PGN-like move list plus buy events) for future replays and ratings.
 
 ### Hosting and cost
 | Piece | Choice | Cost |
@@ -75,10 +76,32 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 0. ~~Write this plan to `docs/ARCHITECTURE.md`~~ (done)
 1. ~~`packages/rules` with Vitest tests~~ (done) (drops incl. no pawns on 1st/8th rank, no captures-to-pocket, coin accrual, buying off-turn, Claim Victory, mate/stalemate).
 2. ~~`apps/web` hotseat mode: board, pocket, shop panel and count-up clocks, fully offline.~~ (done)
-3. `apps/server` Colyseus room plus private invite links, then the matchmaking queue.
-4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS, GitHub Actions to deploy both.
+3. ~~`apps/server` Colyseus room plus private invite links, then the matchmaking queue.~~ (done, see "Online play")
+4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS (files ready in `deploy/`, see `deploy/README.md`). Still to do: GitHub Actions auto-deploy.
 5. Vs-bot via Fairy-Stockfish WASM, plus the shop heuristic.
 6. Later: accounts (Better Auth), Glicko-2 ratings (`glicko2` npm), game replays.
+
+## Online play (as built)
+**Protocol** (`packages/protocol`): one Colyseus room per game (`bugshop`), with plain JSON messages instead of Colyseus Schema state.
+- Client → server *requests*: `action` (a rules `Action`; the reply is `true` or a rejection reason) and `time` (server clock, used for offset estimation).
+- Server → client: `welcome` (your color) and `snapshot` (`{ game, seats, mode, serverNow }`, sent after every change).
+
+**Flow**
+- **Private:** `create({mode:'private'})` gives a 16-character random room ID, which is the invite link `/g/:roomId`. A friend joins with `joinById`. Private rooms never show up in matchmaking.
+- **Public:** `joinOrCreate({mode:'public'})` puts the first player in a waiting room and the next player into the same room.
+- **Colors and start:** colors are assigned randomly. The game starts when both seats are taken, and the room locks so nobody else can join.
+- **Moves on the client:** the client checks each action locally with the same rules and shows it immediately. The server's snapshot then confirms it, or a rejection rolls it back.
+
+**Disconnects**
+- **Dropped connection** (network loss, tab reload): the seat is held for 10 minutes and the player reconnects with a per-tab token in sessionStorage.
+- **Choosing to leave mid-game** counts as resigning.
+- **A player who never returns** keeps their seat as "away". Their clock keeps running, so the opponent earns coins and can buy Claim Victory. No special forfeit rule is needed.
+- **Room cleanup:** rooms close 1 h after creation if the game never started, 10 min after the game ends, and after 24 h at the latest.
+
+**Server hardening**
+- **Validation:** every message is validated with strict zod schemas. A malformed message or unknown message type disconnects the client.
+- **Limits:** client messages are capped at 4 KB, more than 10 messages per second disconnects the client, matchmaking is rate-limited per IP, and the total number of rooms is capped.
+- **Origins:** browsers from any origin outside `ALLOWED_ORIGINS` are refused, both for CORS and for the WebSocket upgrade.
 
 ## Game rules (decided)
 | Rule | Decision |

@@ -1,9 +1,9 @@
 import { opposite, parseUci, makeUci, makeSquare, type ByColor, type Color, type SquareName } from 'chessops';
 import { chessgroundDests } from 'chessops/compat';
 import { makeSanAndPlay } from 'chessops/san';
-import { type BugshopConfig, type ShopRole, SHOP_ROLES, makeConfig } from './config.js';
-import { type ClockState, elapsedAt, startClock, stopClock, switchTurn } from './clock.js';
-import { type BugshopPosition, INITIAL_FEN, positionFromFen, positionToFen } from './position.js';
+import { type BugshopConfig, type ShopRole, SHOP_ROLES, makeConfig } from './config.ts';
+import { type ClockState, elapsedAt, startClock, stopClock, switchTurn } from './clock.ts';
+import { type BugshopPosition, INITIAL_FEN, positionFromFen, positionToFen } from './position.ts';
 
 export type GameStatus = 'playing' | 'checkmate' | 'stalemate' | 'resign' | 'claimVictory' | 'drawAgreed';
 

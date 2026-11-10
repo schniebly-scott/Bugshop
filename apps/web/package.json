@@ -12,7 +12,9 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@bugshop/protocol": "workspace:*",
     "@bugshop/rules": "workspace:*",
+    "@colyseus/sdk": "0.18.8",
     "@lichess-org/chessground": "10.5.0",
     "chessops": "0.15.1",
     "react": "19.3.1",

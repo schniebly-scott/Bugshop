@@ -1,12 +1,19 @@
 import type { MouseEvent, TouchEvent } from 'react';
 import type { Color } from 'chessops';
 import { type GameState, type ShopRole, SHOP_ROLES, coinsAt, elapsed, pockets } from '@bugshop/rules';
+import type { SeatStatus } from '@bugshop/protocol';
 import { PieceIcon } from './PieceIcon';
 import { ConfirmButton } from './ConfirmButton';
 import { ROLE_NAMES, colorName, formatClock } from '../game/view';
 
 export interface PlayerPanelProps {
   color: Color;
+  /** Heading, e.g. "White", "You (White)". */
+  label: string;
+  /** Whether the local user controls this player (shop, pocket, game actions). */
+  interactive: boolean;
+  /** Online presence; omitted in hotseat. */
+  seat?: SeatStatus;
   state: GameState;
   now: number;
   /** Pocket piece currently selected for click-to-drop by this player. */
@@ -26,6 +33,7 @@ export function PlayerPanel(p: PlayerPanelProps) {
   const opponent: Color = color === 'white' ? 'black' : 'white';
   const playing = state.status === 'playing';
   const isTurn = playing && state.fen.split(' ')[1] === color[0];
+  const canAct = playing && p.interactive;
   const time = elapsed(state, now);
   const coins = coinsAt(state, color, now);
   // Progress toward the next coin, earned from the opponent's running time.
@@ -37,7 +45,10 @@ export function PlayerPanel(p: PlayerPanelProps) {
     <section className={`player-panel ${isTurn ? 'to-move' : ''}`} aria-label={`${colorName(color)} player`}>
       <header className="player-head">
         <span className={`player-dot ${color}`} aria-hidden="true" />
-        <h2>{colorName(color)}</h2>
+        <h2>{p.label}</h2>
+        {p.seat && p.seat !== 'connected' && (
+          <span className={`presence ${p.seat}`}>{p.seat === 'away' ? 'away' : 'waiting…'}</span>
+        )}
         <time className="clock" aria-label={`${colorName(color)} time used`}>
           {formatClock(time[color])}
         </time>
@@ -55,7 +66,7 @@ export function PlayerPanel(p: PlayerPanelProps) {
       <div className="pocket" aria-label="Pocket">
         {SHOP_ROLES.map(role => {
           const n = pocket[role];
-          const canDrop = n > 0 && isTurn;
+          const canDrop = n > 0 && isTurn && p.interactive;
           return (
             <button
               key={role}
@@ -74,52 +85,56 @@ export function PlayerPanel(p: PlayerPanelProps) {
         })}
       </div>
 
-      <div className="shop" aria-label="Shop">
-        <h3>Stump market</h3>
-        <div className="shop-items">
-          {SHOP_ROLES.map(role => {
-            const price = state.config.prices[role];
-            return (
-              <button
-                key={role}
-                type="button"
-                className="shop-item"
-                disabled={!playing || coins < price}
-                onClick={() => p.onBuy(role)}
-                title={`Buy a ${ROLE_NAMES[role].toLowerCase()} for ${price}`}
-              >
-                <PieceIcon color={color} role={role} />
-                <span className="price">{price}</span>
-              </button>
-            );
-          })}
+      {p.interactive && (
+        <>
+        <div className="shop" aria-label="Shop">
+          <h3>Stump market</h3>
+          <div className="shop-items">
+            {SHOP_ROLES.map(role => {
+              const price = state.config.prices[role];
+              return (
+                <button
+                  key={role}
+                  type="button"
+                  className="shop-item"
+                  disabled={!canAct || coins < price}
+                  onClick={() => p.onBuy(role)}
+                  title={`Buy a ${ROLE_NAMES[role].toLowerCase()} for ${price}`}
+                >
+                  <PieceIcon color={color} role={role} />
+                  <span className="price">{price}</span>
+                </button>
+              );
+            })}
+          </div>
+          <ConfirmButton
+            className="claim"
+            disabled={!canAct || coins < claimPrice}
+            onConfirm={p.onClaimVictory}
+            confirmLabel={`Spend ${claimPrice} and win?`}
+            title="Win immediately. Meant for when your opponent has gone absent."
+          >
+            Claim Victory · {claimPrice}
+          </ConfirmButton>
         </div>
-        <ConfirmButton
-          className="claim"
-          disabled={!playing || coins < claimPrice}
-          onConfirm={p.onClaimVictory}
-          confirmLabel={`Spend ${claimPrice} and win?`}
-          title="Win immediately. Meant for when your opponent has gone absent."
-        >
-          Claim Victory · {claimPrice}
-        </ConfirmButton>
-      </div>
 
-      <div className="game-actions">
-        {state.drawOffer === opponent ? (
-          <>
-            <button type="button" disabled={!playing} onClick={p.onAcceptDraw}>Accept draw</button>
-            <button type="button" disabled={!playing} onClick={p.onDeclineDraw}>Decline</button>
-          </>
-        ) : (
-          <button type="button" disabled={!playing || state.drawOffer === color} onClick={p.onOfferDraw}>
-            {state.drawOffer === color ? 'Draw offered' : 'Offer draw'}
-          </button>
-        )}
-        <ConfirmButton disabled={!playing} onConfirm={p.onResign} confirmLabel="Really resign?">
-          Resign
-        </ConfirmButton>
-      </div>
+        <div className="game-actions">
+          {state.drawOffer === opponent ? (
+            <>
+              <button type="button" disabled={!canAct} onClick={p.onAcceptDraw}>Accept draw</button>
+              <button type="button" disabled={!canAct} onClick={p.onDeclineDraw}>Decline</button>
+            </>
+          ) : (
+            <button type="button" disabled={!canAct || state.drawOffer === color} onClick={p.onOfferDraw}>
+              {state.drawOffer === color ? 'Draw offered' : 'Offer draw'}
+            </button>
+          )}
+          <ConfirmButton disabled={!canAct} onConfirm={p.onResign} confirmLabel="Really resign?">
+            Resign
+          </ConfirmButton>
+        </div>
+        </>
+      )}
     </section>
   );
 }

@@ -4,3 +4,8 @@ packages:
 
 # Supply-chain hardening: refuse package versions published less than 14 days ago.
 minimumReleaseAge: 20160
+
+# Install scripts are blocked by default. Each entry here was reviewed:
+allowBuilds:
+  # Optional native speed-up for msgpackr (used by Colyseus); msgpackr falls back to pure JS.
+  msgpackr-extract: false

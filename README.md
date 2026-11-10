@@ -10,11 +10,16 @@ Requires Node 24+ and pnpm (`corepack enable`).
 
 ```sh
 pnpm install
-pnpm --filter @bugshop/web dev      # hotseat app at http://localhost:5173
+pnpm --filter @bugshop/server dev   # game server on http://localhost:2567
+pnpm --filter @bugshop/web dev      # web app at http://localhost:5173 (hotseat works without the server)
 pnpm test                           # all unit tests
 pnpm typecheck
 pnpm --filter @bugshop/web build && pnpm --filter @bugshop/web preview   # production build with production security headers
 ```
+
+## Deployment
+
+The web app deploys to Vercel and the game server to a small VPS with Docker Compose + Caddy. See [deploy/README.md](deploy/README.md).
 
 ## Security
 

@@ -1,0 +1,27 @@
+{
+  "name": "@bugshop/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "start": "node src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@colyseus/sdk": "0.18.8",
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "@bugshop/protocol": "workspace:*",
+    "@bugshop/rules": "workspace:*",
+    "@colyseus/core": "0.18.23",
+    "@colyseus/ws-transport": "0.18.4",
+    "chessops": "0.15.1",
+    "zod": "4.6.7"
+  }
+}

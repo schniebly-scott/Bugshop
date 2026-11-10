@@ -1,0 +1,21 @@
+{
+  "name": "@bugshop/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "description": "Shared client/server message types for Bugshop online play (types and constants only).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@bugshop/rules": "workspace:*",
+    "chessops": "0.15.1"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}

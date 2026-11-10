@@ -9,7 +9,7 @@ import {
   elapsed,
   pockets,
   turnOf,
-} from '../src/index.js';
+} from '../src/index.ts';
 import type { Color } from 'chessops';
 
 const MIN = 60_000;
