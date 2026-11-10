@@ -106,12 +106,13 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 ## Game rules (decided)
 | Rule | Decision |
 |---|---|
-| Coins | You earn coins from the time your **opponent** uses: 1 coin per minute by default (configurable). |
+| Coins | You earn coins from the time your **opponent** uses: 1 coin per 60 s by default. **Chosen per game** (5–600 s). |
 | Prices | Standard piece values: pawn 1, knight 3, bishop 3, rook 5, queen 9. |
 | Buying | Can be done **at any time, even on your opponent's turn**, and does **not** use your turn. The piece goes into your pocket. |
 | Dropping | Placing a piece from your pocket **uses your turn**. Drops follow bughouse rules: pawns can't be dropped on the 1st or 8th rank. Drops can give check and checkmate. |
-| Game end | Checkmate, resignation, **stalemate (draw)**, or the **"Claim Victory"** shop item. |
-| Claim Victory | A shop item for an absent or stalling opponent. A player with enough coins buys it and wins immediately. Because coins come from the opponent's elapsed time, an absent opponent eventually makes this affordable. Price is configurable (suggested starting point: 30 coins, i.e. 30 minutes of opponent time). |
+| Game end | Checkmate, resignation, **stalemate (draw)**, **threefold repetition (draw)**, the **fifty-move rule (draw)**, agreed draw, or the **"Claim Victory"** shop item. |
+| Draw rules | Both are automatic, as on lichess. A repeated position must match the pockets too, so buying a piece breaks a repetition. For the 50-move rule, captures, pawn moves and **pawn drops** reset the count; other drops don't (crazyhouse convention). Checkmate takes priority. |
+| Claim Victory | A shop item for an absent or stalling opponent. A player with enough coins buys it and wins immediately. Because coins come from the opponent's elapsed time, an absent opponent eventually makes this affordable. Price is **chosen per game** (1–500 coins, default 30). |
 
 How this affects the implementation:
 - `buy` is a separate action from `move`/`drop`. The server accepts it from either player at any time and never flips the turn.
@@ -121,10 +122,15 @@ How this affects the implementation:
 - The total of pieces on the board plus pieces in pockets is capped at 64, a technical limit from chessops. Buying past it returns `pocket-full`.
 - The Fairy-Stockfish variant config uses crazyhouse drop rules (no pawn drops on the 1st/8th rank) with `capturesToHand = false`.
 
+### Per-game settings
+`GameSettings = { secondsPerCoin, claimVictoryPrice }` in `packages/protocol`, with bounds in `SETTINGS_LIMITS` that the server enforces.
+- **Who chooses:** the creator picks them on the home page. The browser remembers them, and hotseat uses them too.
+- **Matchmaking:** create and join-or-create requests must send every setting, and public matchmaking pairs only identical settings (Colyseus `filterBy`). This is the basis for future per-setting lobbies, which can list rooms grouped by these fields.
+
 ## Still open
-- Threefold repetition and the 50-move rule: keep them as in chess, or drop them?
-- Final Claim Victory price, and whether it should scale with game length.
+- Should Claim Victory's price scale with game length?
 - Should the bot know about Claim Victory, e.g. buy it if a human goes AFK?
+- Lobbies: list open public games grouped by settings, possibly with a few named presets so the queue doesn't fragment.
 
 ## Verification
 - `pnpm -r test`: rules unit tests (including a scripted full game with purchases).

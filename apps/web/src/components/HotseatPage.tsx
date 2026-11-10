@@ -5,10 +5,17 @@ import { GameView } from './GameView';
 import { ConfirmButton } from './ConfirmButton';
 import { useHotseatGame } from '../game/useHotseatGame';
 import { useNow } from '../game/useNow';
-import { colorName, errorText } from '../game/view';
+import { colorName, errorText, settingsText } from '../game/view';
+import { loadSettings, saveSettings } from '../game/settingsStore';
+import { SettingsForm } from './SettingsForm';
 
 export function HotseatPage() {
-  const { state, act, newGame, lastError, clearError } = useHotseatGame();
+  const [settings, setSettings] = useState(loadSettings);
+  const { state, act, newGame, lastError, clearError } = useHotseatGame(settings);
+  const startNew = () => {
+    saveSettings(settings);
+    newGame(settings);
+  };
   const playing = state.status === 'playing';
   const now = useNow(playing);
 
@@ -40,10 +47,15 @@ export function HotseatPage() {
         Flip board
       </button>
       {playing ? (
-        <ConfirmButton onConfirm={newGame} confirmLabel="Abandon this game?">New game</ConfirmButton>
+        <ConfirmButton onConfirm={startNew} confirmLabel="Abandon this game?">New game</ConfirmButton>
       ) : (
-        <button type="button" className="primary" onClick={newGame}>New game</button>
+        <button type="button" className="primary" onClick={startNew}>New game</button>
       )}
+      <p className="settings-summary">This game: {settingsText({ secondsPerCoin: state.config.msPerCoin / 1000, claimVictoryPrice: state.config.claimVictoryPrice })}</p>
+      <details className="new-game-settings">
+        <summary>Settings for the next game</summary>
+        <SettingsForm value={settings} onChange={setSettings} />
+      </details>
     </GameView>
   );
 }

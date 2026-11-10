@@ -1,6 +1,6 @@
 export { type BugshopConfig, type ShopRole, DEFAULT_CONFIG, SHOP_ROLES, makeConfig } from './config.ts';
 export { type ClockState, elapsedAt } from './clock.ts';
-export { BugshopPosition, INITIAL_FEN, positionFromFen, positionToFen } from './position.ts';
+export { BugshopPosition, INITIAL_FEN, positionFromFen, positionKey, positionToFen } from './position.ts';
 export {
   type Action,
   type ActionResult,

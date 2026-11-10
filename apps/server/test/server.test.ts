@@ -2,7 +2,7 @@ import { request as httpRequest } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client, type Room } from '@colyseus/sdk';
 import type { Color } from 'chessops';
-import { type Snapshot, type Welcome, Msg, ROOM_NAME } from '@bugshop/protocol';
+import { type GameMode, type GameSettings, type Snapshot, type Welcome, DEFAULT_SETTINGS, Msg, ROOM_NAME } from '@bugshop/protocol';
 import { createGameServer } from '../src/app.ts';
 import { BugshopRoom } from '../src/BugshopRoom.ts';
 import { loadEnv } from '../src/env.ts';
@@ -59,10 +59,12 @@ const track = (room: Room): Player => {
 };
 
 const newClient = () => new Client(ENDPOINT);
+/** Full create options, as the web client sends them. */
+const opts = (mode: GameMode, settings: Partial<GameSettings> = {}) => ({ mode, ...DEFAULT_SETTINGS, ...settings });
 
 /** Two players in one private game, both welcomed and the game started. */
 const startPrivateGame = async () => {
-  const a = track(await newClient().create(ROOM_NAME, { mode: 'private' }));
+  const a = track(await newClient().create(ROOM_NAME, opts('private')));
   const b = track(await newClient().joinById(a.room.roomId));
   await a.waitFor(s => s.game !== null, 'game start');
   await b.waitFor(s => s.game !== null, 'game start');
@@ -92,8 +94,8 @@ describe('private invite rooms', () => {
   });
 
   it('is never handed out by public matchmaking', async () => {
-    const priv = track(await newClient().create(ROOM_NAME, { mode: 'private' }));
-    const pub = track(await newClient().joinOrCreate(ROOM_NAME, { mode: 'public' }));
+    const priv = track(await newClient().create(ROOM_NAME, opts('private')));
+    const pub = track(await newClient().joinOrCreate(ROOM_NAME, opts('public')));
     expect(pub.room.roomId).not.toBe(priv.room.roomId);
     await priv.room.leave();
     await pub.room.leave();
@@ -109,13 +111,59 @@ describe('private invite rooms', () => {
 
 describe('public matchmaking', () => {
   it('pairs two players into one room and opens a new room for the next', async () => {
-    const p1 = track(await newClient().joinOrCreate(ROOM_NAME, { mode: 'public' }));
-    const p2 = track(await newClient().joinOrCreate(ROOM_NAME, { mode: 'public' }));
+    const p1 = track(await newClient().joinOrCreate(ROOM_NAME, opts('public')));
+    const p2 = track(await newClient().joinOrCreate(ROOM_NAME, opts('public')));
     expect(p2.room.roomId).toBe(p1.room.roomId);
     await p1.waitFor(s => s.game !== null, 'game start');
-    const p3 = track(await newClient().joinOrCreate(ROOM_NAME, { mode: 'public' }));
+    const p3 = track(await newClient().joinOrCreate(ROOM_NAME, opts('public')));
     expect(p3.room.roomId).not.toBe(p1.room.roomId);
     await p3.waitFor(s => s.game === null && s.seats.white !== s.seats.black, 'waiting snapshot');
+    for (const p of [p1, p2, p3]) await p.room.leave();
+  });
+});
+
+describe('public queue disconnects', () => {
+  it('does not pair the next player with someone who dropped while waiting', async () => {
+    const settings = { secondsPerCoin: 33 }; // isolate from other tests' public rooms
+    const ghost = track(await newClient().joinOrCreate(ROOM_NAME, opts('public', settings)));
+    await ghost.waitFor(s => s.game === null, 'waiting');
+    await ghost.room.leave(false); // tab closed while waiting in the queue
+    await new Promise(r => setTimeout(r, 100));
+    const next = track(await newClient().joinOrCreate(ROOM_NAME, opts('public', settings)));
+    const s = await next.waitFor(() => true, 'snapshot');
+    expect(s.game).toBeNull(); // still waiting for a real opponent
+    expect(Object.values(s.seats).filter(x => x !== 'empty')).toEqual(['connected']);
+    await next.room.leave();
+  });
+});
+
+describe('per-game settings', () => {
+  it('uses the creator\'s coin rate and Claim Victory price for the game', async () => {
+    const a = track(await newClient().create(ROOM_NAME, opts('private', { secondsPerCoin: 10, claimVictoryPrice: 5 })));
+    await a.waitFor(s => s.settings !== undefined, 'waiting snapshot');
+    expect(a.snapshot().settings).toEqual({ secondsPerCoin: 10, claimVictoryPrice: 5 });
+    const b = track(await newClient().joinById(a.room.roomId));
+    const s = await b.waitFor(s => s.game !== null, 'game start');
+    expect(s.game!.config).toMatchObject({ msPerCoin: 10_000, claimVictoryPrice: 5 });
+
+    // 50 s of White's time = 5 coins for Black at 10 s/coin: enough for Claim Victory.
+    const white = a.color() === 'white' ? a : b;
+    const black = white === a ? b : a;
+    advanceServerClockForTests(49_000);
+    expect(await rejection(black, { type: 'claimVictory' })).toBe('not-enough-coins');
+    advanceServerClockForTests(1_000);
+    await expect(act(black, { type: 'claimVictory' })).resolves.toBe(true);
+    await a.room.leave();
+    await b.room.leave();
+  });
+
+  it('public matchmaking only pairs players who chose the same settings', async () => {
+    const fast = { secondsPerCoin: 15, claimVictoryPrice: 20 };
+    const p1 = track(await newClient().joinOrCreate(ROOM_NAME, opts('public', fast)));
+    const p2 = track(await newClient().joinOrCreate(ROOM_NAME, opts('public', { ...fast, claimVictoryPrice: 21 })));
+    expect(p2.room.roomId).not.toBe(p1.room.roomId);
+    const p3 = track(await newClient().joinOrCreate(ROOM_NAME, opts('public', fast)));
+    expect(p3.room.roomId).toBe(p1.room.roomId);
     for (const p of [p1, p2, p3]) await p.room.leave();
   });
 });
@@ -192,15 +240,20 @@ describe('malicious or malformed clients', () => {
 
   it('rejects invalid room options', async () => {
     await expect(newClient().create(ROOM_NAME, { mode: 'secret' })).rejects.toThrow(/Invalid options/);
-    await expect(newClient().create(ROOM_NAME, { mode: 'public', admin: true })).rejects.toThrow(/Invalid options/);
+    await expect(newClient().create(ROOM_NAME, { ...opts('public'), admin: true })).rejects.toThrow(/Invalid options/);
+    // Settings are required (matchmaking filters on them) and bounded.
+    await expect(newClient().create(ROOM_NAME, { mode: 'public' })).rejects.toThrow(/Invalid options/);
+    for (const bad of [{ secondsPerCoin: 0 }, { secondsPerCoin: 1e9 }, { secondsPerCoin: 30.5 }, { claimVictoryPrice: -1 }, { claimVictoryPrice: '30' }]) {
+      await expect(newClient().create(ROOM_NAME, { ...opts('private'), ...bad })).rejects.toThrow(/Invalid options/);
+    }
   });
 
   it('rate-limits matchmaking per IP', async () => {
     BugshopRoom.configure({ matchmakePerMinute: 3 });
     try {
       const rooms: Room[] = [];
-      for (let i = 0; i < 3; i++) rooms.push(await newClient().create(ROOM_NAME, { mode: 'private' }));
-      await expect(newClient().create(ROOM_NAME, { mode: 'private' })).rejects.toThrow(/Too many requests/);
+      for (let i = 0; i < 3; i++) rooms.push(await newClient().create(ROOM_NAME, opts('private')));
+      await expect(newClient().create(ROOM_NAME, opts('private'))).rejects.toThrow(/Too many requests/);
       for (const r of rooms) await r.leave();
     } finally {
       BugshopRoom.configure({ matchmakePerMinute: 1000 });

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Action, ShopRole } from '@bugshop/rules';
-import type { JoinOptions } from '@bugshop/protocol';
+import { type CreateOptions, SETTINGS_LIMITS } from '@bugshop/protocol';
 
 // Strict schemas: unknown keys are rejected, strings are length-bounded.
 // Colyseus disconnects any client whose message fails validation.
@@ -20,9 +20,18 @@ export const ActionSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('declineDraw') }),
 ]) satisfies z.ZodType<Action>;
 
-export const JoinOptionsSchema = z.strictObject({
-  mode: z.enum(['public', 'private']).optional(),
-}) satisfies z.ZodType<JoinOptions>;
+const bounded = (k: keyof typeof SETTINGS_LIMITS) =>
+  z.number().int().min(SETTINGS_LIMITS[k].min).max(SETTINGS_LIMITS[k].max);
+
+/** `create` / `joinOrCreate`: every field required (matchmaking filters on them). */
+export const CreateOptionsSchema = z.strictObject({
+  mode: z.enum(['public', 'private']),
+  secondsPerCoin: bounded('secondsPerCoin'),
+  claimVictoryPrice: bounded('claimVictoryPrice'),
+}) satisfies z.ZodType<CreateOptions>;
+
+/** Any matchmaking request: full create options, or none (`joinById`, `reconnect`). */
+export const JoinOptionsSchema = z.union([z.strictObject({}), CreateOptionsSchema]);
 
 /** The `time` request carries no payload. */
 export const EmptySchema = z.undefined().or(z.null()).or(z.strictObject({}));

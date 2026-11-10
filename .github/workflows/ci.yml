@@ -46,7 +46,7 @@ jobs:
       - name: Image starts and refuses to run without ALLOWED_ORIGINS
         run: |
           ! docker run --rm bugshop-server:ci
-          docker run -d --name s -e ALLOWED_ORIGINS=https://example.com bugshop-server:ci
+          docker run -d --name bugshop-ci -e ALLOWED_ORIGINS=https://example.com bugshop-server:ci
           sleep 3
-          docker logs s | grep -q "listening"
-          [ "$(docker exec s id -u)" != "0" ]  # runs as non-root
+          docker logs bugshop-ci | grep -q "listening"
+          [ "$(docker exec bugshop-ci id -u)" != "0" ]  # runs as non-root

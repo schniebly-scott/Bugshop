@@ -1,6 +1,6 @@
 import { defineRoom, defineServer, matchMaker } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
-import { ROOM_NAME } from '@bugshop/protocol';
+import { MATCH_FIELDS, ROOM_NAME } from '@bugshop/protocol';
 import { BugshopRoom } from './BugshopRoom.ts';
 import type { Env } from './env.ts';
 
@@ -42,7 +42,8 @@ export const createGameServer = (env: Env) => {
         originOk(request.headers.get('origin')) ? undefined : new Response('Forbidden origin', { status: 403 }),
     }),
     rooms: {
-      [ROOM_NAME]: defineRoom(BugshopRoom),
+      // Public matchmaking only pairs players who asked for the same mode and settings.
+      [ROOM_NAME]: defineRoom(BugshopRoom).filterBy([...MATCH_FIELDS]),
     },
   });
 };

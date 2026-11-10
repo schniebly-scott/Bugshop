@@ -4,6 +4,7 @@
   "type": "module",
   "license": "GPL-3.0-or-later",
   "scripts": {
+    "dev": "pnpm --parallel --filter @bugshop/web --filter @bugshop/server dev",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   },

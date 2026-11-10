@@ -1,7 +1,17 @@
 import { Client, type Room } from '@colyseus/sdk';
 import type { Color } from 'chessops';
 import { type Action, type GameState, applyAction } from '@bugshop/rules';
-import { type ActionRejection, type GameMode, type Snapshot, type TimeReply, type Welcome, Msg, ROOM_NAME } from '@bugshop/protocol';
+import {
+  type ActionRejection,
+  type CreateOptions,
+  type GameMode,
+  type GameSettings,
+  type Snapshot,
+  type TimeReply,
+  type Welcome,
+  Msg,
+  ROOM_NAME,
+} from '@bugshop/protocol';
 
 /** Public game server URL (not a secret; baked into the bundle at build time). */
 export const SERVER_URL: string = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:2567';
@@ -86,10 +96,11 @@ export class OnlineSession {
     return s;
   }
 
-  /** Start a game: public matchmaking or a private invite room. */
-  static async start(mode: GameMode): Promise<OnlineSession> {
+  /** Start a game: public matchmaking (same settings only) or a private invite room. */
+  static async start(mode: GameMode, settings: GameSettings): Promise<OnlineSession> {
     const s = new OnlineSession(`new:${mode}`);
-    await s.connect(client => (mode === 'public' ? client.joinOrCreate(ROOM_NAME, { mode }) : client.create(ROOM_NAME, { mode })));
+    const options: CreateOptions = { mode, ...settings };
+    await s.connect(client => (mode === 'public' ? client.joinOrCreate(ROOM_NAME, options) : client.create(ROOM_NAME, options)));
     return s;
   }
 
@@ -196,7 +207,7 @@ export const sessionFor = (roomId: string): OnlineSession => {
   return current;
 };
 
-export const startSession = async (mode: GameMode): Promise<OnlineSession> => {
-  current = await OnlineSession.start(mode);
+export const startSession = async (mode: GameMode, settings: GameSettings): Promise<OnlineSession> => {
+  current = await OnlineSession.start(mode, settings);
   return current;
 };

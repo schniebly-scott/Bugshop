@@ -64,6 +64,10 @@ export const resultText = (state: GameState): string | undefined => {
       return `Checkmate. ${w} wins.`;
     case 'stalemate':
       return 'Stalemate. The game is a draw.';
+    case 'repetition':
+      return 'Draw by threefold repetition.';
+    case 'fiftyMoves':
+      return 'Draw by the fifty-move rule.';
     case 'resign':
       return `${state.winner === 'white' ? 'Black' : 'White'} resigned. ${w} wins.`;
     case 'claimVictory':
@@ -72,3 +76,7 @@ export const resultText = (state: GameState): string | undefined => {
       return 'Draw agreed.';
   }
 };
+
+/** One-line description of a game's settings, e.g. "1 seed / 60 s · Claim Victory 30". */
+export const settingsText = (s: { secondsPerCoin: number; claimVictoryPrice: number }): string =>
+  `1 seed / ${s.secondsPerCoin} s · Claim Victory ${s.claimVictoryPrice}`;

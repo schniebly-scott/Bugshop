@@ -256,3 +256,65 @@ describe('scripted game with purchases', () => {
     ]);
   });
 });
+
+describe('draw rules', () => {
+  const shuffle = ['g1f3', 'g8f6', 'f3g1', 'f6g8'];
+
+  it('threefold repetition: the start position occurring a third time is a draw', () => {
+    let g = createGame({ now: 0 });
+    const plies = [...shuffle, ...shuffle];
+    plies.forEach((uci, i) => {
+      expect(g.status).toBe('playing');
+      g = mv(g, i % 2 === 0 ? 'white' : 'black', uci, 0);
+    });
+    expect(g.status).toBe('repetition');
+    expect(g.winner).toBeUndefined();
+  });
+
+  it('pockets are part of the position, so a purchase breaks the repetition', () => {
+    let g = createGame({ now: 0 });
+    shuffle.forEach((uci, i) => (g = mv(g, i % 2 === 0 ? 'white' : 'black', uci, 0)));
+    // White thinks a minute on the next move, so Black can afford a pawn.
+    g = mv(g, 'white', 'g1f3', MIN);
+    g = act(g, 'black', { type: 'buy', role: 'pawn' }, MIN);
+    ['g8f6', 'f3g1', 'f6g8'].forEach((uci, i) => (g = mv(g, i % 2 === 0 ? 'black' : 'white', uci, MIN)));
+    expect(g.status).toBe('playing');
+  });
+
+  it('an irreversible move clears the repetition history', () => {
+    let g = createGame({ now: 0 });
+    g = mv(g, 'white', 'e2e4', 0);
+    expect(g.positions).toHaveLength(1);
+  });
+
+  it('fifty-move rule: 100 plies without capture, pawn move or pawn drop is a draw', () => {
+    // Halfmove clock already at 99; one more quiet move ends the game.
+    let g = createGame({ now: 0, fen: '4k3/8/8/8/8/8/8/R3K3[] w - - 99 80' });
+    g = mv(g, 'white', 'a1a2', 0);
+    expect(g.status).toBe('fiftyMoves');
+  });
+
+  it('checkmate takes priority over the fifty-move rule', () => {
+    let g = createGame({ now: 0, fen: '6k1/5ppp/8/8/8/8/8/R5K1[] w - - 99 80' });
+    g = mv(g, 'white', 'a1a8', 0);
+    expect(g.status).toBe('checkmate');
+  });
+
+  it('both rules can be switched off in the config', () => {
+    let g = createGame({ now: 0, fen: '4k3/8/8/8/8/8/8/R3K3[] w - - 99 80', config: { fiftyMoveRule: false } });
+    g = mv(g, 'white', 'a1a2', 0);
+    expect(g.status).toBe('playing');
+    let r = createGame({ now: 0, config: { threefoldRepetition: false } });
+    [...shuffle, ...shuffle].forEach((uci, i) => (r = mv(r, i % 2 === 0 ? 'white' : 'black', uci, 0)));
+    expect(r.status).toBe('playing');
+  });
+});
+
+describe('config validation', () => {
+  it('rejects nonsensical settings', () => {
+    expect(() => createGame({ now: 0, config: { msPerCoin: 0 } })).toThrow(RangeError);
+    expect(() => createGame({ now: 0, config: { msPerCoin: Number.NaN } })).toThrow(RangeError);
+    expect(() => createGame({ now: 0, config: { claimVictoryPrice: -5 } })).toThrow(RangeError);
+    expect(() => createGame({ now: 0, config: { claimVictoryPrice: 2.5 } })).toThrow(RangeError);
+  });
+});

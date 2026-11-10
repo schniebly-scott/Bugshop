@@ -3,9 +3,17 @@ import { chessgroundDests } from 'chessops/compat';
 import { makeSanAndPlay } from 'chessops/san';
 import { type BugshopConfig, type ShopRole, SHOP_ROLES, makeConfig } from './config.ts';
 import { type ClockState, elapsedAt, startClock, stopClock, switchTurn } from './clock.ts';
-import { type BugshopPosition, INITIAL_FEN, positionFromFen, positionToFen } from './position.ts';
+import { type BugshopPosition, INITIAL_FEN, positionFromFen, positionKey, positionToFen } from './position.ts';
 
-export type GameStatus = 'playing' | 'checkmate' | 'stalemate' | 'resign' | 'claimVictory' | 'drawAgreed';
+export type GameStatus =
+  | 'playing'
+  | 'checkmate'
+  | 'stalemate'
+  | 'repetition'
+  | 'fiftyMoves'
+  | 'resign'
+  | 'claimVictory'
+  | 'drawAgreed';
 
 export type GameEvent =
   | { type: 'move'; by: Color; uci: string; san: string; at: number }
@@ -29,6 +37,12 @@ export interface GameState {
   /** Color with a pending draw offer, if any. */
   drawOffer?: Color;
   history: GameEvent[];
+  /**
+   * Position keys (FEN without move counters) since the last capture, pawn
+   * move or pawn drop, oldest first. Used for threefold repetition; positions
+   * before an irreversible move can never repeat, so they are dropped.
+   */
+  positions: string[];
 }
 
 export type Action =
@@ -72,6 +86,7 @@ export const createGame = ({ now, config, fen = INITIAL_FEN }: CreateGameOptions
     clock: startClock(now),
     status: 'playing',
     history: [],
+    positions: [positionKey(pos)],
   };
 };
 
@@ -165,18 +180,27 @@ export const applyAction = (state: GameState, by: Color, action: Action, now: nu
       if (!pos.isLegal(move)) return fail('illegal-move');
 
       const san = makeSanAndPlay(pos, move);
+      const key = positionKey(pos);
+      // chessops resets `halfmoves` on captures, pawn moves and pawn drops: irreversible moves.
+      const positions = pos.halfmoves === 0 ? [key] : [...state.positions, key];
       let next: GameState = {
         ...state,
         fen: positionToFen(pos),
         clock: switchTurn(state.clock, by, now),
         history: [...state.history, { type: 'move', by, uci: makeUci(move), san, at: now }],
+        positions,
       };
       // Making a move implicitly declines a draw offered by the opponent.
       if (next.drawOffer === opposite(by)) delete next.drawOffer;
 
+      // Mate/stalemate first: a move that mates wins even if it also repeats a position.
       const opponentCoins = coinsAt(next, pos.turn, now);
       if (!hasAnyContinuation(pos, opponentCoins, state.config)) {
         next = pos.isCheck() ? endGame(next, now, 'checkmate', by) : endGame(next, now, 'stalemate');
+      } else if (state.config.fiftyMoveRule && pos.halfmoves >= 100) {
+        next = endGame(next, now, 'fiftyMoves');
+      } else if (state.config.threefoldRepetition && positions.filter(p => p === key).length >= 3) {
+        next = endGame(next, now, 'repetition');
       }
       return { ok: true, state: next };
     }

@@ -37,3 +37,9 @@ export const positionFromFen = (fen: string): BugshopPosition =>
   BugshopPosition.fromSetupChecked(parseFen(fen).unwrap());
 
 export const positionToFen = (pos: BugshopPosition): string => makeFen(pos.toSetup());
+
+/**
+ * Identity of a position for repetition: board, pockets, side to move, castling
+ * rights and a *legal* en-passant square, without the move counters.
+ */
+export const positionKey = (pos: BugshopPosition): string => makeFen(pos.toSetup(), { epd: true });

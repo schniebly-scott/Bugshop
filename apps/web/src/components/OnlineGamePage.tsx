@@ -1,9 +1,10 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { Color } from 'chessops';
+import type { GameSettings } from '@bugshop/protocol';
 import { sessionFor } from '../online/session';
 import { navigate } from '../router';
 import { useNow } from '../game/useNow';
-import { colorName, errorText } from '../game/view';
+import { colorName, errorText, settingsText } from '../game/view';
 import { GameView } from './GameView';
 import { ConfirmButton } from './ConfirmButton';
 
@@ -33,7 +34,14 @@ export function OnlineGamePage({ roomId }: { roomId: string }) {
   }
 
   if (!view.game) {
-    return <WaitingRoom roomId={roomId} isPrivate={view.mode === 'private'} onCancel={() => session.leave().then(() => navigate('/'))} />;
+    return (
+      <WaitingRoom
+        roomId={roomId}
+        isPrivate={view.mode === 'private'}
+        settings={view.snapshot?.settings}
+        onCancel={() => session.leave().then(() => navigate('/'))}
+      />
+    );
   }
 
   const me = view.color;
@@ -57,6 +65,7 @@ export function OnlineGamePage({ roomId }: { roomId: string }) {
       label={label}
       seats={view.snapshot?.seats}
     >
+      {view.snapshot?.settings && <p className="settings-summary">{settingsText(view.snapshot.settings)}</p>}
       {playing ? (
         <ConfirmButton onConfirm={() => session.leave().then(() => navigate('/'))} confirmLabel="Leaving resigns. Leave?">
           Leave game
@@ -70,7 +79,8 @@ export function OnlineGamePage({ roomId }: { roomId: string }) {
   );
 }
 
-function WaitingRoom({ roomId, isPrivate, onCancel }: { roomId: string; isPrivate: boolean; onCancel(): void }) {
+function WaitingRoom(props: { roomId: string; isPrivate: boolean; settings?: GameSettings; onCancel(): void }) {
+  const { roomId, isPrivate, onCancel } = props;
   const link = `${location.origin}/g/${roomId}`;
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -101,6 +111,7 @@ function WaitingRoom({ roomId, isPrivate, onCancel }: { roomId: string; isPrivat
           <p>The game starts as soon as someone else joins.</p>
         </>
       )}
+      {props.settings && <p className="settings-summary">{settingsText(props.settings)}</p>}
       <button type="button" onClick={onCancel}>Cancel</button>
     </main>
   );

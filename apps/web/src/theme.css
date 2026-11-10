@@ -350,3 +350,32 @@ cg-board square.check {
   background: var(--amber-soft);
   color: var(--bark);
 }
+
+/* ---------- settings ---------- */
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin: 0 0 16px;
+  padding: 10px 14px 12px;
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.settings legend { padding: 0 6px; color: var(--bark); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.setting { display: flex; flex-direction: column; gap: 4px; color: var(--text-soft); font-size: 0.9rem; }
+.setting-input { display: flex; align-items: center; gap: 6px; }
+.setting input {
+  width: 6em;
+  font: inherit;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: var(--bg);
+  color: var(--text);
+}
+.setting .unit { color: var(--text-soft); }
+.settings-summary { color: var(--text-soft); font-size: 0.9rem; }
+.new-game-settings { flex-basis: 100%; }
+.new-game-settings summary { cursor: pointer; color: var(--text-soft); margin-bottom: 8px; }
+.controls .settings-summary { flex-basis: 100%; margin: 0; }

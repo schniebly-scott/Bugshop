@@ -10,8 +10,8 @@ Requires Node 24+ and pnpm (`corepack enable`).
 
 ```sh
 pnpm install
-pnpm --filter @bugshop/server dev   # game server on http://localhost:2567
-pnpm --filter @bugshop/web dev      # web app at http://localhost:5173 (hotseat works without the server)
+pnpm dev                            # web app (http://localhost:5173) + game server (:2567) together
+pnpm --filter @bugshop/web dev      # or just the web app (hotseat works without the server)
 pnpm test                           # all unit tests
 pnpm typecheck
 pnpm --filter @bugshop/web build && pnpm --filter @bugshop/web preview   # production build with production security headers

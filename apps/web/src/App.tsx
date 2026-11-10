@@ -29,7 +29,7 @@ export function App() {
         </main>
       )}
       <footer className="site-footer">
-        Your opponent's time is your money. 1 seed per minute they think. Buy pieces at the stump market and drop them in.
+        Your opponent's time is your money. Buy pieces at the stump market and drop them in.
       </footer>
     </>
   );

@@ -5,14 +5,16 @@ import { type GameState, applyAction, createGame } from '@bugshop/rules';
 import {
   type ActionRejection,
   type GameMode,
+  type GameSettings,
   type SeatStatus,
   type Snapshot,
   type TimeReply,
   type Welcome,
   Limits,
   Msg,
+  settingsToConfig,
 } from '@bugshop/protocol';
-import { ActionSchema, EmptySchema, JoinOptionsSchema } from './schemas.ts';
+import { ActionSchema, CreateOptionsSchema, EmptySchema, JoinOptionsSchema } from './schemas.ts';
 import { RateLimiter } from './rateLimit.ts';
 import { serverNow } from './serverClock.ts';
 
@@ -59,6 +61,7 @@ export class BugshopRoom extends Room {
   maxMessagesPerSecond = 10;
 
   private mode: GameMode = 'public';
+  private settings!: GameSettings;
   private game: GameState | null = null;
   private colorOf = new Map<string, Color>();
   private seats: ByColor<SeatStatus> = { white: 'empty', black: 'empty' };
@@ -96,7 +99,11 @@ export class BugshopRoom extends Room {
     BugshopRoom.activeRooms++;
     this.counted = true;
 
-    this.mode = JoinOptionsSchema.parse(options ?? {}).mode ?? 'public';
+    const created = CreateOptionsSchema.safeParse(options);
+    if (!created.success) throw new ServerError(400, 'Invalid options.');
+    const { mode, ...settings } = created.data;
+    this.mode = mode;
+    this.settings = settings;
     if (this.mode === 'private') {
       // The room ID is the invite secret: use a long random one (~95 bits).
       this.roomId = generateId(16);
@@ -118,7 +125,7 @@ export class BugshopRoom extends Room {
       // Both seats taken: start the game and keep the seats reserved for these two players.
       void this.lock();
       this.lifecycleTimer?.clear();
-      this.game = createGame({ now: serverNow() });
+      this.game = createGame({ now: serverNow(), config: settingsToConfig(this.settings) });
     }
     this.broadcastSnapshot();
   }
@@ -127,6 +134,12 @@ export class BugshopRoom extends Room {
   onDrop(client: Client) {
     const color = this.colorOf.get(client.sessionId);
     if (!color) return;
+    if (!this.game && this.mode === 'public') {
+      // Nobody is waiting on this player yet. Don't hold the seat, or matchmaking
+      // would pair the next player with someone who is gone.
+      this.seatLost(client.sessionId, false);
+      return;
+    }
     this.seats[color] = 'away';
     this.broadcastSnapshot();
     this.allowReconnection(client, Limits.reconnectSeconds).catch(() => this.seatLost(client.sessionId, false));
@@ -184,7 +197,13 @@ export class BugshopRoom extends Room {
   }
 
   private broadcastSnapshot() {
-    const snapshot: Snapshot = { mode: this.mode, game: this.game, seats: { ...this.seats }, serverNow: serverNow() };
+    const snapshot: Snapshot = {
+      mode: this.mode,
+      settings: this.settings,
+      game: this.game,
+      seats: { ...this.seats },
+      serverNow: serverNow(),
+    };
     this.broadcast(Msg.snapshot, snapshot);
   }
 
