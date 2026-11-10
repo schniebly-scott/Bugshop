@@ -94,6 +94,8 @@ How this affects the implementation:
 - `buy` is a separate action from `move`/`drop`. The server accepts it from either player at any time and never flips the turn.
 - Coin balance = `floor(opponentElapsedMs / msPerCoin) - spent`. Buying is validated against the balance the server has computed at the moment the request arrives.
 - `claimVictory` is a shop action that ends the game. The server checks the balance and records the result as "won by Claim Victory".
+- **Mate and stalemate take the shop into account.** Buying doesn't use a turn, so a player is only checkmated or stalemated if they have no legal move or drop *and* can't afford a piece whose drop would get them out. For example, a player in check from a distant queen with 1 coin can buy a pawn and drop it to block.
+- The total of pieces on the board plus pieces in pockets is capped at 64, a technical limit from chessops. Buying past it returns `pocket-full`.
 - The Fairy-Stockfish variant config uses crazyhouse drop rules (no pawn drops on the 1st/8th rank) with `capturesToHand = false`.
 
 ## Still open
