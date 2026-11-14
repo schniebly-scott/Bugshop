@@ -8,6 +8,7 @@ import { Backpack } from './Backpack';
 import { ShopScroll } from './ShopScroll';
 import { ConfirmButton } from './ConfirmButton';
 import { PromotionDialog } from './PromotionDialog';
+import { SeedIcon, ShoeIcon } from './icons';
 import { ROLE_LETTER, boardFen, lastMoveSquares, resultText } from '../game/view';
 
 const NO_SQUARES: SquareName[] = [];
@@ -88,6 +89,10 @@ export function GameView(props: GameViewProps) {
     else setSelectedDrop(null);
   };
 
+  // Whose backpack is open: the player at the bottom, or in hotseat whoever is to move
+  // (they are the one who can drop). The other player's pocket shows in their bar.
+  const packOwner = controls.includes(turn) && props.revealed.includes(turn) ? turn : bottom;
+
   const backpack = (color: Color) =>
     props.revealed.includes(color) ? (
       <Backpack
@@ -111,7 +116,7 @@ export function GameView(props: GameViewProps) {
       now={now}
       revealed={props.revealed.includes(color)}
       seat={props.seats?.[color]}
-      showPocket={color === top}
+      showPocket={color !== packOwner}
     />
   );
 
@@ -123,31 +128,37 @@ export function GameView(props: GameViewProps) {
     <main className="game-layout">
       <section className="board-column">
         {bar(top)}
-        <div className="board-frame">
-          <Board
-            key={syncToken}
-            ref={boardRef}
-            fen={boardFen(state.fen)}
-            orientation={orientation}
-            turnColor={turn}
-            movableColor={canMove ? turn : undefined}
-            dests={dests}
-            lastMove={lastMove}
-            check={check}
-            dropTargets={dropTargets}
-            onMove={onMove}
-            onDrop={drop}
-            onSquareClick={onSquareClick}
-          />
+        <div className="board-area">
+          <div className="board-frame">
+            <Board
+              key={syncToken}
+              ref={boardRef}
+              fen={boardFen(state.fen)}
+              orientation={orientation}
+              turnColor={turn}
+              movableColor={canMove ? turn : undefined}
+              dests={dests}
+              lastMove={lastMove}
+              check={check}
+              dropTargets={dropTargets}
+              onMove={onMove}
+              onDrop={drop}
+              onSquareClick={onSquareClick}
+            />
+          </div>
+          <div className="board-toast" role="status" aria-live="polite">
+            {!result && props.message ? <span>{props.message}</span> : null}
+          </div>
         </div>
-        {backpack(bottom)}
         {bar(bottom)}
-        <div className="status-line" role="status" aria-live="polite">
-          {result ? <strong className="result">{result}</strong> : props.message ? <span className="error">{props.message}</span> : null}
+        <div className="result-line" role="status" aria-live="polite">
+          {result ? <strong className="result">{result}</strong> : null}
         </div>
       </section>
 
       <aside className="side-column">
+        {backpack(packOwner)}
+
         {controls.length > 0 && (
           <ShopScroll
             color={buyer}
@@ -160,25 +171,35 @@ export function GameView(props: GameViewProps) {
           />
         )}
 
-        {controls.length > 0 && (
-          <div className="game-actions">
-            {state.drawOffer === opponentOfBuyer ? (
-              <>
-                <button type="button" disabled={!canAct} onClick={() => act(buyer, { type: 'acceptDraw' })}>Accept draw</button>
-                <button type="button" disabled={!canAct} onClick={() => act(buyer, { type: 'declineDraw' })}>Decline</button>
-              </>
-            ) : (
-              <button type="button" disabled={!canAct || state.drawOffer === buyer} onClick={() => act(buyer, { type: 'offerDraw' })}>
-                {state.drawOffer === buyer ? 'Draw offered' : 'Offer draw'}
-              </button>
-            )}
-            <ConfirmButton disabled={!canAct} onConfirm={() => act(buyer, { type: 'resign' })} confirmLabel="Really resign?">
-              Resign
-            </ConfirmButton>
-          </div>
-        )}
-
-        <div className="controls">{props.children}</div>
+        <section className="camp-card" aria-label="Game controls">
+          {controls.length > 0 && playing && (
+            <div className="game-actions">
+              {state.drawOffer === opponentOfBuyer ? (
+                <>
+                  <span className="draw-offer">{props.label(opponentOfBuyer)} offers a draw</span>
+                  <button type="button" className="primary" disabled={!canAct} onClick={() => act(buyer, { type: 'acceptDraw' })}>Accept</button>
+                  <button type="button" disabled={!canAct} onClick={() => act(buyer, { type: 'declineDraw' })}>Decline</button>
+                </>
+              ) : (
+                <button type="button" disabled={!canAct || state.drawOffer === buyer} onClick={() => act(buyer, { type: 'offerDraw' })}>
+                  {state.drawOffer === buyer ? 'Draw offered' : 'Offer draw'}
+                </button>
+              )}
+              <ConfirmButton disabled={!canAct} onConfirm={() => act(buyer, { type: 'resign' })} confirmLabel="Really resign?">
+                Resign
+              </ConfirmButton>
+            </div>
+          )}
+          <div className="controls">{props.children}</div>
+          <p className="rules-line">
+            <span>
+              <SeedIcon /> 1 seed per {state.config.msPerCoin / 1000}s
+            </span>
+            <span>
+              <ShoeIcon /> Squish for {state.config.squishPrice}
+            </span>
+          </p>
+        </section>
       </aside>
 
       {pendingPromotion && (

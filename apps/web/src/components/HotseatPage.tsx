@@ -5,7 +5,7 @@ import { GameView } from './GameView';
 import { ConfirmButton } from './ConfirmButton';
 import { useHotseatGame } from '../game/useHotseatGame';
 import { useNow } from '../game/useNow';
-import { colorName, errorText, settingsText } from '../game/view';
+import { colorName, errorText } from '../game/view';
 import { loadSettings, saveSettings } from '../game/settingsStore';
 import { SettingsForm } from './SettingsForm';
 
@@ -40,21 +40,20 @@ export function HotseatPage() {
       message={lastError && errorText(lastError)}
       label={colorName}
     >
-      <label className="toggle">
-        <input type="checkbox" checked={autoFlip} onChange={e => setAutoFlip(e.target.checked)} />
-        Flip board each turn
-      </label>
-      <button type="button" disabled={autoFlip} onClick={() => setManualOrientation(o => opposite(o))}>
-        Flip board
-      </button>
       {playing ? (
         <ConfirmButton onConfirm={startNew} confirmLabel="Abandon this game?">New game</ConfirmButton>
       ) : (
         <button type="button" className="primary" onClick={startNew}>New game</button>
       )}
-      <p className="settings-summary">This game: {settingsText({ secondsPerCoin: state.config.msPerCoin / 1000, squishPrice: state.config.squishPrice })}</p>
+      <button type="button" disabled={autoFlip} onClick={() => setManualOrientation(o => opposite(o))}>
+        Flip board
+      </button>
+      <label className="toggle">
+        <input type="checkbox" checked={autoFlip} onChange={e => setAutoFlip(e.target.checked)} />
+        Turn the board to face whoever is moving
+      </label>
       <details className="new-game-settings">
-        <summary>Settings for the next game</summary>
+        <summary>Change the rules for the next game</summary>
         <SettingsForm value={settings} onChange={setSettings} />
       </details>
     </GameView>
