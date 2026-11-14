@@ -35,8 +35,11 @@ In engine terms, Bugshop is **Crazyhouse in which captured pieces do not go to t
 ### UI theme: forest / bugs
 - Palette: moss and leaf greens, bark browns, amber highlights. The board squares look like light and dark moss, or lichen on bark.
 - Pieces: start with a standard chessground piece set recolored to fit the theme. A custom bug-themed SVG set can come later (e.g. king = queen ant, knight = grasshopper, rook = beetle, bishop = mantis, pawn = ant larva). Chessground takes custom piece SVGs through CSS.
-- The shop looks like a tree-stump "market" panel, and coins are drawn as seeds or leaves.
-- Use CSS variables in a `theme.css` so a light (day forest) and dark (night forest) variant are easy.
+- Coins are drawn as seeds. The shop is the "Stump Market", a paper scroll (`ShopScroll.tsx`); the pocket is a canvas backpack whose front pocket holds the five piece slots (`Backpack.tsx`); player bars and the header are wooden planks.
+- Behind every page, `Backdrop.tsx` draws a forest clearing in inline SVG: sky, leafy branches in the top corners, two rows of pines and a tent with a campfire (stars and fireflies at night).
+- `EdgeBugs.tsx` animates a few small bugs (caterpillars, beetles, ladybugs, ants) crawling around the edge of the window on a single canvas. They are procedural (no assets), ignore pointer events, and stand still under `prefers-reduced-motion`. The track math lives in `src/bugs/path.ts`.
+- `theme.css` holds all colors as CSS variables, with a light (day forest) and dark (night forest) variant. Each surface has its own ink (`--text` on the sky, `--ink` on paper, `--wood-ink` on wood); paper and wood look the same in both themes, so text on them never changes color.
+- Keep visible text short and concrete. Say what a number means ("1 seed per 60s"), and put secondary detail in `title`/`aria-label` rather than on screen.
 
 ### One repo, not two
 Use a **single monorepo**. The client and server must run the *exact same* rules code (`packages/rules`). In two repos you would have to publish and version that package and keep both sides in sync, which is a common source of desync bugs. Deploying from one repo is still easy: set the Vercel project's Root Directory to `apps/web`, and have GitHub Actions deploy `apps/server` to the VPS only when `apps/server/**` or `packages/**` change.

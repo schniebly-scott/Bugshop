@@ -48,8 +48,8 @@ const ERROR_TEXT: Record<ActionRejection | 'network', string> = {
   'invalid-uci': 'That move could not be understood.',
   'illegal-move': 'Illegal move.',
   'unknown-role': 'That piece is not for sale.',
-  'not-enough-coins': 'Not enough coins.',
-  'pocket-full': 'Your pocket is full.',
+  'not-enough-coins': 'Not enough seeds.',
+  'pocket-full': 'Your backpack is full.',
   'draw-already-offered': 'You already offered a draw.',
   'no-draw-offer': 'There is no draw offer to answer.',
 };
@@ -76,7 +76,3 @@ export const resultText = (state: GameState): string | undefined => {
       return 'Draw agreed.';
   }
 };
-
-/** One-line description of a game's settings, e.g. "1 seed / 60 s · Squish 30". */
-export const settingsText = (s: { secondsPerCoin: number; squishPrice: number }): string =>
-  `1 seed / ${s.secondsPerCoin} s · Squish ${s.squishPrice}`;

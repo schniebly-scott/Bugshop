@@ -39,3 +39,24 @@ export function SeedIcon({ className = '' }: { className?: string }) {
     </svg>
   );
 }
+
+export function ScrollIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`icon scroll-icon ${className}`} viewBox="0 0 40 44" aria-hidden="true">
+      <rect x="8" y="7" width="24" height="30" fill="var(--paper, #f3e4bd)" />
+      <rect x="3" y="3" width="34" height="8" rx="4" fill="var(--roll, #c9a468)" />
+      <rect x="3" y="33" width="34" height="8" rx="4" fill="var(--roll, #c9a468)" />
+      <path d="M13 17h14M13 22h14M13 27h9" stroke="var(--scribble, #8a6a3c)" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function HourglassIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`icon hourglass-icon ${className}`} viewBox="0 0 40 44" aria-hidden="true">
+      <path d="M9 4h22M9 40h22" stroke="var(--frame, #74482a)" strokeWidth="4" strokeLinecap="round" />
+      <path d="M12 6c0 9 6 11 6 16s-6 7-6 16h16c0-9-6-11-6-16s6-7 6-16z" fill="var(--glass, #f7efd8)" stroke="var(--frame, #74482a)" strokeWidth="2" />
+      <path d="M15 12h10c-1 4-4 5-5 8-1-3-4-4-5-8zM14 37c1-5 4-6 6-8 2 2 5 3 6 8z" fill="var(--seed, #c98b2b)" />
+    </svg>
+  );
+}
