@@ -9,8 +9,8 @@ export interface BugshopConfig {
   msPerCoin: number;
   /** Coin price of each buyable piece. */
   prices: Record<ShopRole, number>;
-  /** Coin price of the "Claim Victory" shop item (instant win). */
-  claimVictoryPrice: number;
+  /** Coin price of the "Squish" shop item (instant win). */
+  squishPrice: number;
   /** Draw when the same position (incl. pockets and side to move) occurs a third time. */
   threefoldRepetition: boolean;
   /** Draw after 50 moves by each side with no capture, pawn move or pawn drop. */
@@ -20,7 +20,7 @@ export interface BugshopConfig {
 export const DEFAULT_CONFIG: BugshopConfig = {
   msPerCoin: 60_000,
   prices: { pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9 },
-  claimVictoryPrice: 30,
+  squishPrice: 30,
   threefoldRepetition: true,
   fiftyMoveRule: true,
 };
@@ -35,7 +35,7 @@ export const makeConfig = (overrides: Partial<BugshopConfig> = {}): BugshopConfi
     prices: { ...DEFAULT_CONFIG.prices, ...overrides.prices },
   };
   if (!isPositiveInt(config.msPerCoin)) throw new RangeError('msPerCoin must be a positive integer');
-  if (!isPositiveInt(config.claimVictoryPrice)) throw new RangeError('claimVictoryPrice must be a positive integer');
+  if (!isPositiveInt(config.squishPrice)) throw new RangeError('squishPrice must be a positive integer');
   for (const role of SHOP_ROLES) {
     if (!isPositiveInt(config.prices[role])) throw new RangeError(`price of ${role} must be a positive integer`);
   }

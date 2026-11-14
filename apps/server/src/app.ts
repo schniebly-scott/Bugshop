@@ -1,10 +1,14 @@
 import { defineRoom, defineServer, matchMaker } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
-import { MATCH_FIELDS, ROOM_NAME } from '@bugshop/protocol';
+import { LOBBY_LIST_ROOM_NAME, ROOM_NAME } from '@bugshop/protocol';
 import { BugshopRoom } from './BugshopRoom.ts';
+import { LobbyListRoom } from './LobbyListRoom.ts';
 import type { Env } from './env.ts';
 
-/** Only the matchmaking calls the web client uses. */
+/**
+ * Only the matchmaking calls the web client uses: `joinOrCreate` for the lobby
+ * list, `create` to open a game, `joinById` to join one, `reconnect` to resume.
+ */
 const EXPOSED_METHODS = ['joinOrCreate', 'create', 'joinById', 'reconnect'];
 
 export const createGameServer = (env: Env) => {
@@ -42,8 +46,9 @@ export const createGameServer = (env: Env) => {
         originOk(request.headers.get('origin')) ? undefined : new Response('Forbidden origin', { status: 403 }),
     }),
     rooms: {
-      // Public matchmaking only pairs players who asked for the same mode and settings.
-      [ROOM_NAME]: defineRoom(BugshopRoom).filterBy([...MATCH_FIELDS]),
+      // Realtime listing notifies the lobby list room whenever a game changes.
+      [ROOM_NAME]: defineRoom(BugshopRoom).enableRealtimeListing(),
+      [LOBBY_LIST_ROOM_NAME]: defineRoom(LobbyListRoom),
     },
   });
 };

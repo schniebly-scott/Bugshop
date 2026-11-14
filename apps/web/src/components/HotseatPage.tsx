@@ -34,6 +34,7 @@ export function HotseatPage() {
       state={state}
       now={now}
       controls={['white', 'black']}
+      revealed={['white', 'black']}
       orientation={orientation}
       act={act}
       message={lastError && errorText(lastError)}
@@ -51,7 +52,7 @@ export function HotseatPage() {
       ) : (
         <button type="button" className="primary" onClick={startNew}>New game</button>
       )}
-      <p className="settings-summary">This game: {settingsText({ secondsPerCoin: state.config.msPerCoin / 1000, claimVictoryPrice: state.config.claimVictoryPrice })}</p>
+      <p className="settings-summary">This game: {settingsText({ secondsPerCoin: state.config.msPerCoin / 1000, squishPrice: state.config.squishPrice })}</p>
       <details className="new-game-settings">
         <summary>Settings for the next game</summary>
         <SettingsForm value={settings} onChange={setSettings} />

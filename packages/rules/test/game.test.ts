@@ -164,11 +164,11 @@ describe('game end', () => {
     expect(g.status).toBe('playing');
   });
 
-  it('Claim Victory needs enough coins and ends the game immediately', () => {
+  it('Squish needs enough coins and ends the game immediately', () => {
     const g = createGame({ now: 0 });
-    expect(errorOf(g, 'black', { type: 'claimVictory' }, 29 * MIN)).toBe('not-enough-coins');
-    const won = act(g, 'black', { type: 'claimVictory' }, 30 * MIN);
-    expect(won.status).toBe('claimVictory');
+    expect(errorOf(g, 'black', { type: 'squish' }, 29 * MIN)).toBe('not-enough-coins');
+    const won = act(g, 'black', { type: 'squish' }, 30 * MIN);
+    expect(won.status).toBe('squish');
     expect(won.winner).toBe('black');
     expect(won.spent.black).toBe(30);
     expect(elapsed(won, 99 * MIN).white).toBe(30 * MIN); // clock frozen
@@ -314,7 +314,7 @@ describe('config validation', () => {
   it('rejects nonsensical settings', () => {
     expect(() => createGame({ now: 0, config: { msPerCoin: 0 } })).toThrow(RangeError);
     expect(() => createGame({ now: 0, config: { msPerCoin: Number.NaN } })).toThrow(RangeError);
-    expect(() => createGame({ now: 0, config: { claimVictoryPrice: -5 } })).toThrow(RangeError);
-    expect(() => createGame({ now: 0, config: { claimVictoryPrice: 2.5 } })).toThrow(RangeError);
+    expect(() => createGame({ now: 0, config: { squishPrice: -5 } })).toThrow(RangeError);
+    expect(() => createGame({ now: 0, config: { squishPrice: 2.5 } })).toThrow(RangeError);
   });
 });

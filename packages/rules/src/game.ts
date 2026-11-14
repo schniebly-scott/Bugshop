@@ -12,13 +12,13 @@ export type GameStatus =
   | 'repetition'
   | 'fiftyMoves'
   | 'resign'
-  | 'claimVictory'
+  | 'squish'
   | 'drawAgreed';
 
 export type GameEvent =
   | { type: 'move'; by: Color; uci: string; san: string; at: number }
   | { type: 'buy'; by: Color; role: ShopRole; price: number; at: number }
-  | { type: 'claimVictory'; by: Color; price: number; at: number }
+  | { type: 'squish'; by: Color; price: number; at: number }
   | { type: 'resign'; by: Color; at: number }
   | { type: 'offerDraw'; by: Color; at: number }
   | { type: 'acceptDraw'; by: Color; at: number }
@@ -48,7 +48,7 @@ export interface GameState {
 export type Action =
   | { type: 'move'; uci: string }
   | { type: 'buy'; role: ShopRole }
-  | { type: 'claimVictory' }
+  | { type: 'squish' }
   | { type: 'resign' }
   | { type: 'offerDraw' }
   | { type: 'acceptDraw' }
@@ -223,12 +223,12 @@ export const applyAction = (state: GameState, by: Color, action: Action, now: nu
       };
     }
 
-    case 'claimVictory': {
-      const price = state.config.claimVictoryPrice;
+    case 'squish': {
+      const price = state.config.squishPrice;
       if (coinsAt(state, by, now) < price) return fail('not-enough-coins');
-      const next = endGame(state, now, 'claimVictory', by);
+      const next = endGame(state, now, 'squish', by);
       next.spent = { ...state.spent, [by]: state.spent[by] + price };
-      next.history = [...state.history, { type: 'claimVictory', by, price, at: now }];
+      next.history = [...state.history, { type: 'squish', by, price, at: now }];
       return { ok: true, state: next };
     }
 

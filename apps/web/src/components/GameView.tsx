@@ -3,7 +3,10 @@ import { opposite, parseSquare, type ByColor, type Color, type Role, type Square
 import { type Action, type GameState, type ShopRole, dropDests, getPosition, legalDests, turnOf } from '@bugshop/rules';
 import type { SeatStatus } from '@bugshop/protocol';
 import { Board, type BoardHandle } from './Board';
-import { PlayerPanel } from './PlayerPanel';
+import { PlayerBar } from './PlayerBar';
+import { Backpack } from './Backpack';
+import { ShopScroll } from './ShopScroll';
+import { ConfirmButton } from './ConfirmButton';
 import { PromotionDialog } from './PromotionDialog';
 import { ROLE_LETTER, boardFen, lastMoveSquares, resultText } from '../game/view';
 
@@ -16,6 +19,8 @@ export interface GameViewProps {
   now: number;
   /** Colors the person at this screen controls: both in hotseat, one online. */
   controls: Color[];
+  /** Colors whose seeds and backpack this screen may see. */
+  revealed: Color[];
   orientation: Color;
   /** Perform an action. Return false if it was refused (the board snaps back). */
   act(by: Color, action: Action): boolean;
@@ -27,12 +32,23 @@ export interface GameViewProps {
   children?: ReactNode;
 }
 
-/** Board + both player panels. Shared by hotseat and online play. */
-export function GameView({ state, now, controls, orientation, act, message, label, seats, children }: GameViewProps) {
+/** Board, backpacks, market and player bars. Shared by hotseat and online play. */
+export function GameView(props: GameViewProps) {
+  const { state, now, controls, orientation, act } = props;
   const playing = state.status === 'playing';
   const turn = turnOf(state);
   const boardRef = useRef<BoardHandle>(null);
   const canMove = playing && controls.includes(turn);
+  const top = opposite(orientation);
+  const bottom = orientation;
+
+  // Who is using the market. Online: you. Hotseat: the side to move by default,
+  // switchable so the other player can buy on their opponent's turn.
+  const [shopper, setShopper] = useState<Color>(controls.includes(turn) ? turn : (controls[0] ?? bottom));
+  useEffect(() => {
+    if (controls.length > 1) setShopper(turn);
+  }, [turn, controls.length]);
+  const buyer = controls.includes(shopper) ? shopper : (controls[0] ?? bottom);
 
   const [selectedDrop, setSelectedDrop] = useState<{ color: Color; role: ShopRole } | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ orig: SquareName; dest: SquareName } | null>(null);
@@ -72,36 +88,41 @@ export function GameView({ state, now, controls, orientation, act, message, labe
     else setSelectedDrop(null);
   };
 
-  const panel = (color: Color) => (
-    <PlayerPanel
+  const backpack = (color: Color) =>
+    props.revealed.includes(color) ? (
+      <Backpack
+        color={color}
+        state={state}
+        canDrop={canMove && color === turn}
+        selected={selectedDrop?.color === color ? selectedDrop.role : null}
+        onPick={(role, e) => {
+          setSelectedDrop({ color, role });
+          boardRef.current?.dragFromPocket({ role, color }, e.nativeEvent);
+        }}
+        onSelect={role => setSelectedDrop({ color, role })}
+      />
+    ) : null;
+
+  const bar = (color: Color) => (
+    <PlayerBar
       color={color}
-      label={label(color)}
-      interactive={controls.includes(color)}
-      seat={seats?.[color]}
+      label={props.label(color)}
       state={state}
       now={now}
-      selectedDrop={selectedDrop?.color === color ? selectedDrop.role : null}
-      onBuy={role => act(color, { type: 'buy', role })}
-      onPocketPick={(role, e) => {
-        setSelectedDrop({ color, role });
-        boardRef.current?.dragFromPocket({ role, color }, e.nativeEvent);
-      }}
-      onPocketClick={role => setSelectedDrop({ color, role })}
-      onClaimVictory={() => act(color, { type: 'claimVictory' })}
-      onResign={() => act(color, { type: 'resign' })}
-      onOfferDraw={() => act(color, { type: 'offerDraw' })}
-      onAcceptDraw={() => act(color, { type: 'acceptDraw' })}
-      onDeclineDraw={() => act(color, { type: 'declineDraw' })}
+      revealed={props.revealed.includes(color)}
+      seat={props.seats?.[color]}
+      showPocket={color === top}
     />
   );
 
   const result = resultText(state);
+  const opponentOfBuyer = opposite(buyer);
+  const canAct = playing && controls.includes(buyer);
 
   return (
     <main className="game-layout">
-      <div className="area-top">{panel(opposite(orientation))}</div>
-
-      <div className="area-board">
+      <section className="board-column">
+        {bar(top)}
         <div className="board-frame">
           <Board
             key={syncToken}
@@ -119,14 +140,46 @@ export function GameView({ state, now, controls, orientation, act, message, labe
             onSquareClick={onSquareClick}
           />
         </div>
+        {backpack(bottom)}
+        {bar(bottom)}
         <div className="status-line" role="status" aria-live="polite">
-          {result ? <strong className="result">{result}</strong> : message ? <span className="error">{message}</span> : null}
+          {result ? <strong className="result">{result}</strong> : props.message ? <span className="error">{props.message}</span> : null}
         </div>
-      </div>
+      </section>
 
-      <div className="area-bottom">{panel(orientation)}</div>
+      <aside className="side-column">
+        {controls.length > 0 && (
+          <ShopScroll
+            color={buyer}
+            state={state}
+            now={now}
+            enabled={canAct}
+            onBuy={role => act(buyer, { type: 'buy', role })}
+            onSquish={() => act(buyer, { type: 'squish' })}
+            shopperSwitch={controls.length > 1 ? { onSwitch: setShopper } : undefined}
+          />
+        )}
 
-      <div className="area-controls controls">{children}</div>
+        {controls.length > 0 && (
+          <div className="game-actions">
+            {state.drawOffer === opponentOfBuyer ? (
+              <>
+                <button type="button" disabled={!canAct} onClick={() => act(buyer, { type: 'acceptDraw' })}>Accept draw</button>
+                <button type="button" disabled={!canAct} onClick={() => act(buyer, { type: 'declineDraw' })}>Decline</button>
+              </>
+            ) : (
+              <button type="button" disabled={!canAct || state.drawOffer === buyer} onClick={() => act(buyer, { type: 'offerDraw' })}>
+                {state.drawOffer === buyer ? 'Draw offered' : 'Offer draw'}
+              </button>
+            )}
+            <ConfirmButton disabled={!canAct} onConfirm={() => act(buyer, { type: 'resign' })} confirmLabel="Really resign?">
+              Resign
+            </ConfirmButton>
+          </div>
+        )}
+
+        <div className="controls">{props.children}</div>
+      </aside>
 
       {pendingPromotion && (
         <PromotionDialog

@@ -16,6 +16,7 @@ import {
 } from '@bugshop/protocol';
 import { ActionSchema, CreateOptionsSchema, EmptySchema, JoinOptionsSchema } from './schemas.ts';
 import { RateLimiter } from './rateLimit.ts';
+import { redactFor } from './redact.ts';
 import { serverNow } from './serverClock.ts';
 
 const MINUTE = 60_000;
@@ -104,6 +105,8 @@ export class BugshopRoom extends Room {
     const { mode, ...settings } = created.data;
     this.mode = mode;
     this.settings = settings;
+    // Public games are listed in the lobby list with their settings.
+    if (mode === 'public') await this.setMetadata({ ...settings });
     if (this.mode === 'private') {
       // The room ID is the invite secret: use a long random one (~95 bits).
       this.roomId = generateId(16);
@@ -113,7 +116,14 @@ export class BugshopRoom extends Room {
     this.clock.setTimeout(() => this.disconnect(), BugshopRoom.settings.maxLifetimeMs);
   }
 
-  onJoin(client: Client) {
+  onJoin(client: Client, options?: unknown) {
+    // The creator sends the game options; everyone else joins a specific game by
+    // its ID (no options). This blocks `joinOrCreate` from dropping a player
+    // into an arbitrary open lobby.
+    const isCreator = this.colorOf.size === 0 && !this.game;
+    const sentOptions = !!options && typeof options === 'object' && Object.keys(options).length > 0;
+    if (!isCreator && sentOptions) throw new ServerError(400, 'Join games by their ID.');
+
     const free: Color[] = (['white', 'black'] as const).filter(c => this.seats[c] === 'empty');
     // maxClients = 2 and the room is locked once the game starts, so a free seat always exists here.
     const color = free.length === 2 ? (randomInt(2) === 0 ? 'white' : 'black') : free[0]!;
@@ -166,7 +176,7 @@ export class BugshopRoom extends Room {
    * A player is gone for good. Before the game starts, their seat opens up again.
    * During the game, leaving on purpose resigns. A player who never came back
    * stays seated as `away`: their clock keeps running, which earns the opponent
-   * coins toward Claim Victory, so absent players don't need special handling.
+   * coins toward Squish, so absent players don't need special handling.
    */
   private seatLost(sessionId: string, consented: boolean) {
     const color = this.colorOf.get(sessionId);
@@ -196,15 +206,21 @@ export class BugshopRoom extends Room {
     this.broadcastSnapshot();
   }
 
+  /** Send each player their own view: the opponent's pocket stays secret. */
   private broadcastSnapshot() {
-    const snapshot: Snapshot = {
-      mode: this.mode,
-      settings: this.settings,
-      game: this.game,
-      seats: { ...this.seats },
-      serverNow: serverNow(),
-    };
-    this.broadcast(Msg.snapshot, snapshot);
+    const now = serverNow();
+    for (const client of this.clients) {
+      const color = this.colorOf.get(client.sessionId);
+      if (!color) continue;
+      const snapshot: Snapshot = {
+        mode: this.mode,
+        settings: this.settings,
+        game: this.game && redactFor(this.game, color),
+        seats: { ...this.seats },
+        serverNow: now,
+      };
+      client.send(Msg.snapshot, snapshot);
+    }
   }
 
   /** Exposed for tests and logging. */

@@ -25,7 +25,7 @@ In engine terms, Bugshop is **Crazyhouse in which captured pieces do not go to t
  ┌──────── VPS (Hetzner CX22, ~€4–5/mo) ────────┐
  │ Caddy (auto-TLS, reverse proxy)              │
  │ Node + TypeScript + Colyseus                 │
- │  • matchmaking queue + private rooms (by ID) │
+ │  • lobby list + private rooms (by ID)        │
  │  • server-authoritative moves, clock, coins  │
  │  • reconnection handling                     │
  │ SQLite (better-sqlite3 + Drizzle): game log  │
@@ -44,7 +44,7 @@ Use a **single monorepo**. The client and server must run the *exact same* rules
 ### Monorepo layout (pnpm workspaces)
 - `packages/rules`: **shared TS rules engine**, used by both client and server
   - Wraps **chessops** (`Crazyhouse` position: drops and pockets already implemented). After each capture, remove the captured piece from the capturer's pocket.
-  - Adds `BugshopState = { position, coins, clocks, prices, config }` and the actions `move | drop | buy | claimVictory | resign | offerDraw`.
+  - Adds `BugshopState = { position, coins, clocks, prices, config }` and the actions `move | drop | buy | squish | resign | offerDraw`.
   - Clock and coin math are pure functions: `coins[me] = floor(opponentElapsedMs / msPerCoin) - spent[me]`.
   - Variant settings live in a config object (coin rate, prices, drop restrictions) so rule changes need no refactor.
 - `apps/web`: React + Vite + TypeScript
@@ -53,7 +53,7 @@ Use a **single monorepo**. The client and server must run the *exact same* rules
   - Routes (tiny History-API router in `src/router.ts`): `/` (home), `/hotseat`, `/g/:roomId` (online game; also the invite link). `/bot` is planned.
   - Bot: **Fairy-Stockfish WASM** (`fairy-stockfish-nnue.wasm` / `ffish`) in a Web Worker. Define a custom variant in `variants.ini` (`pieceDrops = true`, `capturesToHand = false`) and pass the pocket in the FEN. The bot's shopping uses a simple heuristic in TS (e.g. buy the best piece it can afford when its eval drops). This costs **$0 in server CPU**.
 - `packages/protocol`: message names and payload types shared by client and server (types and constants only).
-- `apps/server`: Node + **Colyseus** 0.18 (MIT). Node 24 runs the TypeScript directly, with no build step. It provides rooms, matchmaking (`joinOrCreate`), private rooms (`create` → share ID), state sync and reconnection, so none of that is hand-written.
+- `apps/server`: Node + **Colyseus** 0.18 (MIT). Node 24 runs the TypeScript directly, with no build step. It provides rooms, the live room listing behind the lobby list, private rooms (`create` → share ID), messaging and reconnection, so none of that is hand-written.
   - `BugshopRoom` validates every action through `packages/rules`. Clients never send clock values.
   - The clock stores `turnStartedAt` timestamps. Clients interpolate locally for display, and the server is the authority.
   - Planned: SQLite stores finished games (PGN-like move list plus buy events) for future replays and ratings.
@@ -74,9 +74,9 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 
 ## Build order
 0. ~~Write this plan to `docs/ARCHITECTURE.md`~~ (done)
-1. ~~`packages/rules` with Vitest tests~~ (done) (drops incl. no pawns on 1st/8th rank, no captures-to-pocket, coin accrual, buying off-turn, Claim Victory, mate/stalemate).
+1. ~~`packages/rules` with Vitest tests~~ (done) (drops incl. no pawns on 1st/8th rank, no captures-to-pocket, coin accrual, buying off-turn, Squish, mate/stalemate).
 2. ~~`apps/web` hotseat mode: board, pocket, shop panel and count-up clocks, fully offline.~~ (done)
-3. ~~`apps/server` Colyseus room plus private invite links, then the matchmaking queue.~~ (done, see "Online play")
+3. ~~`apps/server` Colyseus room plus private invite links and public lobbies.~~ (done, see "Online play")
 4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS (files ready in `deploy/`, see `deploy/README.md`). Still to do: GitHub Actions auto-deploy.
 5. Vs-bot via Fairy-Stockfish WASM, plus the shop heuristic.
 6. Later: accounts (Better Auth), Glicko-2 ratings (`glicko2` npm), game replays.
@@ -87,50 +87,51 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 - Server → client: `welcome` (your color) and `snapshot` (`{ game, seats, mode, serverNow }`, sent after every change).
 
 **Flow**
-- **Private:** `create({mode:'private'})` gives a 16-character random room ID, which is the invite link `/g/:roomId`. A friend joins with `joinById`. Private rooms never show up in matchmaking.
-- **Public:** `joinOrCreate({mode:'public'})` puts the first player in a waiting room and the next player into the same room.
+- **Private:** `create({mode:'private', ...settings})` gives a 16-character random room ID, which is the invite link `/g/:roomId`. A friend joins with `joinById`. Private rooms are never listed.
+- **Public lobbies:** `create({mode:'public', ...settings})` opens a lobby. Its settings are published as room metadata, and the `lobbies` room (`LobbyListRoom`) pushes the list of open, not-full public games to everyone on the home page. Players pick one and join with `joinById`. Only the creator may send options, so `joinOrCreate` can't land a player in a random lobby. A lobby disappears when it fills, or when its creator leaves or disconnects before anyone joins.
+- **Hidden pockets:** each player gets their own snapshot (`apps/server/src/redact.ts`). The opponent's pocket, purchases, spending and repetition keys are removed until the game ends. A drop reveals the piece, as on the board. The client never declares a game result itself, because it can't see the opponent's pocket (they might be able to drop a blocker); the server decides.
 - **Colors and start:** colors are assigned randomly. The game starts when both seats are taken, and the room locks so nobody else can join.
 - **Moves on the client:** the client checks each action locally with the same rules and shows it immediately. The server's snapshot then confirms it, or a rejection rolls it back.
 
 **Disconnects**
 - **Dropped connection** (network loss, tab reload): the seat is held for 10 minutes and the player reconnects with a per-tab token in sessionStorage.
 - **Choosing to leave mid-game** counts as resigning.
-- **A player who never returns** keeps their seat as "away". Their clock keeps running, so the opponent earns coins and can buy Claim Victory. No special forfeit rule is needed.
+- **A player who never returns** keeps their seat as "away". Their clock keeps running, so the opponent earns coins and can buy Squish. No special forfeit rule is needed.
 - **Room cleanup:** rooms close 1 h after creation if the game never started, 10 min after the game ends, and after 24 h at the latest.
 
 **Server hardening**
 - **Validation:** every message is validated with strict zod schemas. A malformed message or unknown message type disconnects the client.
-- **Limits:** client messages are capped at 4 KB, more than 10 messages per second disconnects the client, matchmaking is rate-limited per IP, and the total number of rooms is capped.
+- **Limits:** client messages are capped at 4 KB, more than 10 messages per second disconnects the client, matchmaking (create, join, lobby list) is rate-limited per IP, and the total number of rooms is capped.
 - **Origins:** browsers from any origin outside `ALLOWED_ORIGINS` are refused, both for CORS and for the WebSocket upgrade.
 
 ## Game rules (decided)
 | Rule | Decision |
 |---|---|
-| Coins | You earn coins from the time your **opponent** uses: 1 coin per 60 s by default. **Chosen per game** (5–600 s). |
+| Coins | You earn coins from the time your **opponent** uses: 1 coin per 60 s by default. **Chosen per game** from presets: 10, 25, 30, 45 or 60 s. |
 | Prices | Standard piece values: pawn 1, knight 3, bishop 3, rook 5, queen 9. |
 | Buying | Can be done **at any time, even on your opponent's turn**, and does **not** use your turn. The piece goes into your pocket. |
 | Dropping | Placing a piece from your pocket **uses your turn**. Drops follow bughouse rules: pawns can't be dropped on the 1st or 8th rank. Drops can give check and checkmate. |
-| Game end | Checkmate, resignation, **stalemate (draw)**, **threefold repetition (draw)**, the **fifty-move rule (draw)**, agreed draw, or the **"Claim Victory"** shop item. |
+| Game end | Checkmate, resignation, **stalemate (draw)**, **threefold repetition (draw)**, the **fifty-move rule (draw)**, agreed draw, or the **"Squish"** shop item. |
 | Draw rules | Both are automatic, as on lichess. A repeated position must match the pockets too, so buying a piece breaks a repetition. For the 50-move rule, captures, pawn moves and **pawn drops** reset the count; other drops don't (crazyhouse convention). Checkmate takes priority. |
-| Claim Victory | A shop item for an absent or stalling opponent. A player with enough coins buys it and wins immediately. Because coins come from the opponent's elapsed time, an absent opponent eventually makes this affordable. Price is **chosen per game** (1–500 coins, default 30). |
+| Squish | A shop item for an absent or stalling opponent. A player with enough coins buys it and wins immediately. Because coins come from the opponent's elapsed time, an absent opponent eventually makes this affordable. Price is **chosen per game** from presets: 10, 20 or 30 coins (default 30). Shown with a shoe icon: you squish them. |
 
 How this affects the implementation:
 - `buy` is a separate action from `move`/`drop`. The server accepts it from either player at any time and never flips the turn.
 - Coin balance = `floor(opponentElapsedMs / msPerCoin) - spent`. Buying is validated against the balance the server has computed at the moment the request arrives.
-- `claimVictory` is a shop action that ends the game. The server checks the balance and records the result as "won by Claim Victory".
+- `squish` is a shop action that ends the game. The server checks the balance and records the result as "won by Squish".
 - **Mate and stalemate take the shop into account.** Buying doesn't use a turn, so a player is only checkmated or stalemated if they have no legal move or drop *and* can't afford a piece whose drop would get them out. For example, a player in check from a distant queen with 1 coin can buy a pawn and drop it to block.
 - The total of pieces on the board plus pieces in pockets is capped at 64, a technical limit from chessops. Buying past it returns `pocket-full`.
 - The Fairy-Stockfish variant config uses crazyhouse drop rules (no pawn drops on the 1st/8th rank) with `capturesToHand = false`.
 
 ### Per-game settings
-`GameSettings = { secondsPerCoin, claimVictoryPrice }` in `packages/protocol`, with bounds in `SETTINGS_LIMITS` that the server enforces.
+`GameSettings = { secondsPerCoin, squishPrice }` in `packages/protocol`. Allowed values are the fixed lists in `SETTINGS_OPTIONS`, which the server enforces exactly. A small set keeps the lobby list easy to scan.
 - **Who chooses:** the creator picks them on the home page. The browser remembers them, and hotseat uses them too.
-- **Matchmaking:** create and join-or-create requests must send every setting, and public matchmaking pairs only identical settings (Colyseus `filterBy`). This is the basis for future per-setting lobbies, which can list rooms grouped by these fields.
+- **Lobbies:** each open lobby is listed with its settings, so players choose the game they want.
 
 ## Still open
-- Should Claim Victory's price scale with game length?
-- Should the bot know about Claim Victory, e.g. buy it if a human goes AFK?
-- Lobbies: list open public games grouped by settings, possibly with a few named presets so the queue doesn't fragment.
+- Should Squish's price scale with game length?
+- Should the bot know about Squish, e.g. buy it if a human goes AFK?
+- Lobby list extras: filter by settings, player names once accounts exist.
 
 ## Verification
 - `pnpm -r test`: rules unit tests (including a scripted full game with purchases).

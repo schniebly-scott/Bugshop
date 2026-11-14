@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Action, ShopRole } from '@bugshop/rules';
-import { type CreateOptions, SETTINGS_LIMITS } from '@bugshop/protocol';
+import { type CreateOptions, SETTINGS_OPTIONS } from '@bugshop/protocol';
 
 // Strict schemas: unknown keys are rejected, strings are length-bounded.
 // Colyseus disconnects any client whose message fails validation.
@@ -13,21 +13,21 @@ const UciSchema = z.string().max(5).regex(/^(?:[a-h][1-8][a-h][1-8][qrbn]?|[PNBR
 export const ActionSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('move'), uci: UciSchema }),
   z.strictObject({ type: z.literal('buy'), role: ShopRoleSchema }),
-  z.strictObject({ type: z.literal('claimVictory') }),
+  z.strictObject({ type: z.literal('squish') }),
   z.strictObject({ type: z.literal('resign') }),
   z.strictObject({ type: z.literal('offerDraw') }),
   z.strictObject({ type: z.literal('acceptDraw') }),
   z.strictObject({ type: z.literal('declineDraw') }),
 ]) satisfies z.ZodType<Action>;
 
-const bounded = (k: keyof typeof SETTINGS_LIMITS) =>
-  z.number().int().min(SETTINGS_LIMITS[k].min).max(SETTINGS_LIMITS[k].max);
+/** Exactly one of the allowed preset values. */
+const preset = (k: keyof typeof SETTINGS_OPTIONS) => z.literal(SETTINGS_OPTIONS[k]);
 
 /** `create` / `joinOrCreate`: every field required (matchmaking filters on them). */
 export const CreateOptionsSchema = z.strictObject({
   mode: z.enum(['public', 'private']),
-  secondsPerCoin: bounded('secondsPerCoin'),
-  claimVictoryPrice: bounded('claimVictoryPrice'),
+  secondsPerCoin: preset('secondsPerCoin'),
+  squishPrice: preset('squishPrice'),
 }) satisfies z.ZodType<CreateOptions>;
 
 /** Any matchmaking request: full create options, or none (`joinById`, `reconnect`). */

@@ -96,11 +96,11 @@ export class OnlineSession {
     return s;
   }
 
-  /** Start a game: public matchmaking (same settings only) or a private invite room. */
+  /** Open a game: a public lobby (listed for others) or a private invite room. */
   static async start(mode: GameMode, settings: GameSettings): Promise<OnlineSession> {
     const s = new OnlineSession(`new:${mode}`);
     const options: CreateOptions = { mode, ...settings };
-    await s.connect(client => (mode === 'public' ? client.joinOrCreate(ROOM_NAME, options) : client.create(ROOM_NAME, options)));
+    await s.connect(client => client.create(ROOM_NAME, options));
     return s;
   }
 
@@ -165,7 +165,11 @@ export class OnlineSession {
       this.set({ rejection: res.error });
       return false;
     }
-    this.set({ game: res.state, rejection: null });
+    // Show the move at once, but leave game endings to the server: the
+    // opponent's pocket is hidden from us, so a local "mate" may be wrong
+    // (they might be able to drop a blocker).
+    if (res.state.status === 'playing') this.set({ game: res.state, rejection: null });
+    else this.set({ rejection: null });
     this.room.request(Msg.action, action).catch((e: { reason?: ActionRejection }) => {
       // Server said no (or the request failed): fall back to the confirmed state.
       this.set({ game: this.view.snapshot?.game ?? null, rejection: e?.reason ?? 'network' });

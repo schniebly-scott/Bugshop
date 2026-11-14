@@ -53,6 +53,7 @@ export function OnlineGamePage({ roomId }: { roomId: string }) {
       state={view.game}
       now={now}
       controls={view.status === 'playing' ? [me] : []}
+      revealed={playing ? [me] : ['white', 'black']}
       orientation={me}
       act={(_, action) => session.act(action)}
       message={
@@ -107,8 +108,8 @@ function WaitingRoom(props: { roomId: string; isPrivate: boolean; settings?: Gam
         </>
       ) : (
         <>
-          <h2>Looking for an opponent…</h2>
-          <p>The game starts as soon as someone else joins.</p>
+          <h2>Your lobby is open</h2>
+          <p>It's listed on the front page. The game starts as soon as someone joins.</p>
         </>
       )}
       {props.settings && <p className="settings-summary">{settingsText(props.settings)}</p>}

@@ -70,13 +70,13 @@ export const resultText = (state: GameState): string | undefined => {
       return 'Draw by the fifty-move rule.';
     case 'resign':
       return `${state.winner === 'white' ? 'Black' : 'White'} resigned. ${w} wins.`;
-    case 'claimVictory':
-      return `${w} bought Claim Victory and wins.`;
+    case 'squish':
+      return `${w} squished the opponent and wins.`;
     case 'drawAgreed':
       return 'Draw agreed.';
   }
 };
 
-/** One-line description of a game's settings, e.g. "1 seed / 60 s · Claim Victory 30". */
-export const settingsText = (s: { secondsPerCoin: number; claimVictoryPrice: number }): string =>
-  `1 seed / ${s.secondsPerCoin} s · Claim Victory ${s.claimVictoryPrice}`;
+/** One-line description of a game's settings, e.g. "1 seed / 60 s · Squish 30". */
+export const settingsText = (s: { secondsPerCoin: number; squishPrice: number }): string =>
+  `1 seed / ${s.secondsPerCoin} s · Squish ${s.squishPrice}`;

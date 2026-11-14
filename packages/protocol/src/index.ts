@@ -3,58 +3,61 @@ import type { BugshopConfig, GameState, RuleError } from '@bugshop/rules';
 
 /** Colyseus room name for Bugshop games. */
 export const ROOM_NAME = 'bugshop';
+/** Colyseus room name for the live list of open public lobbies. */
+export const LOBBY_LIST_ROOM_NAME = 'lobbies';
 
 /**
- * `public`: found through matchmaking (`joinOrCreate`).
- * `private`: hidden from matchmaking; joined only through its invite link (`joinById`).
+ * `public`: an open lobby, listed for everyone to browse and join.
+ * `private`: unlisted; joined only through its invite link.
+ * Both are joined with `joinById`.
  */
 export type GameMode = 'public' | 'private';
 
-/**
- * Per-game settings chosen by whoever creates the game. Public matchmaking only
- * pairs players who asked for identical settings, which is the basis for
- * future lobbies per setting.
- */
+/** Per-game settings chosen by whoever opens the game; shown in the lobby list. */
 export interface GameSettings {
   /** Seconds of opponent thinking time that earn one coin. */
   secondsPerCoin: number;
-  /** Coins needed to buy Claim Victory. */
-  claimVictoryPrice: number;
+  /** Coins needed to buy Squish. */
+  squishPrice: number;
 }
 
-export const DEFAULT_SETTINGS: GameSettings = { secondsPerCoin: 60, claimVictoryPrice: 30 };
+export const DEFAULT_SETTINGS: GameSettings = { secondsPerCoin: 60, squishPrice: 30 };
 
-/** Inclusive bounds (whole numbers). The server enforces these; the UI mirrors them. */
-export const SETTINGS_LIMITS = {
-  secondsPerCoin: { min: 5, max: 600 },
-  claimVictoryPrice: { min: 1, max: 500 },
-} as const satisfies Record<keyof GameSettings, { min: number; max: number }>;
+/**
+ * The only allowed values. A small fixed set keeps lobbies easy to scan and
+ * stops players being spread over endless combinations. The server enforces
+ * these; the UI shows them as buttons.
+ */
+export const SETTINGS_OPTIONS = {
+  secondsPerCoin: [10, 25, 30, 45, 60],
+  squishPrice: [10, 20, 30],
+} as const satisfies Record<keyof GameSettings, readonly number[]>;
 
 export const isValidSettings = (s: GameSettings): boolean =>
-  (Object.keys(SETTINGS_LIMITS) as (keyof GameSettings)[]).every(k => {
-    const v = s[k];
-    return Number.isInteger(v) && v >= SETTINGS_LIMITS[k].min && v <= SETTINGS_LIMITS[k].max;
-  });
+  (Object.keys(SETTINGS_OPTIONS) as (keyof GameSettings)[]).every(k =>
+    (SETTINGS_OPTIONS[k] as readonly number[]).includes(s[k]),
+  );
 
 /** Rules-engine config for the given settings. */
 export const settingsToConfig = (s: GameSettings): Partial<BugshopConfig> => ({
   msPerCoin: s.secondsPerCoin * 1000,
-  claimVictoryPrice: s.claimVictoryPrice,
+  squishPrice: s.squishPrice,
 });
 
-/**
- * Options for `create` / `joinOrCreate`. All fields are required: matchmaking
- * filters on them, and a missing field would match rooms with any value.
- */
+/** Options for `create`. `joinById` and `reconnect` send none. */
 export interface CreateOptions extends GameSettings {
   mode: GameMode;
 }
 
-/** `joinById` and `reconnect` send no options. */
 export type JoinOptions = CreateOptions | Record<string, never>;
 
-/** Fields public matchmaking must match exactly. */
-export const MATCH_FIELDS = ['mode', 'secondsPerCoin', 'claimVictoryPrice'] as const satisfies (keyof CreateOptions)[];
+/** One open public lobby, as shown in the lobby list. */
+export interface LobbyListing {
+  roomId: string;
+  settings: GameSettings;
+  /** When the lobby was opened (ms since epoch). */
+  createdAt: number;
+}
 
 /** Seat state shown to both players. `away` = disconnected but may still reconnect. */
 export type SeatStatus = 'empty' | 'connected' | 'away';
@@ -67,8 +70,10 @@ export const Msg = {
   time: 'time',
   /** S→C: which color this connection plays. */
   welcome: 'welcome',
-  /** S→C: full room snapshot after every change. */
+  /** S→C: full room snapshot after every change (opponent's pocket hidden until the game ends). */
   snapshot: 'snapshot',
+  /** S→C (lobby list room): every open public lobby, sent on join and after each change. */
+  lobbies: 'lobbies',
 } as const;
 
 export interface Welcome {

@@ -10,8 +10,8 @@ export const loadSettings = (): GameSettings => {
     if (!raw) return DEFAULT_SETTINGS;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null) return DEFAULT_SETTINGS;
-    const { secondsPerCoin, claimVictoryPrice } = parsed as Record<string, unknown>;
-    const candidate = { secondsPerCoin, claimVictoryPrice } as GameSettings;
+    const { secondsPerCoin, squishPrice } = parsed as Record<string, unknown>;
+    const candidate = { secondsPerCoin, squishPrice } as GameSettings;
     return isValidSettings(candidate) ? candidate : DEFAULT_SETTINGS;
   } catch {
     return DEFAULT_SETTINGS;
