@@ -39,6 +39,7 @@ In engine terms, Bugshop is **Crazyhouse in which captured pieces do not go to t
 - Behind every page, `Backdrop.tsx` draws a forest clearing in inline SVG: sky, leafy branches in the top corners, two rows of pines and a tent with a campfire (stars and fireflies at night).
 - `EdgeBugs.tsx` animates a few small bugs (caterpillars, beetles, ladybugs, ants) crawling around the edge of the window on a single canvas. They are procedural (no assets), ignore pointer events, and stand still under `prefers-reduced-motion`. The track math lives in `src/bugs/path.ts`.
 - `theme.css` holds all colors as CSS variables, with a light (day forest) and dark (night forest) variant. Each surface has its own ink (`--text` on the sky, `--ink` on paper, `--wood-ink` on wood); paper and wood look the same in both themes, so text on them never changes color.
+- On phones, small tablets and short windows (`max-width: 899px` or `max-height: 560px`) the play loop fits on one screen without scrolling: clocks, board, then the backpack and market flattened into two strips. Draw, resign and page controls sit below. The same markup is restyled in CSS, so there is no separate mobile component tree. Portrait stacks everything; landscape puts the strips beside the board.
 - Keep visible text short and concrete. Say what a number means ("1 seed per 60s"), and put secondary detail in `title`/`aria-label` rather than on screen.
 
 ### One repo, not two

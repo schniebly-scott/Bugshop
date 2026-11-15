@@ -31,24 +31,25 @@ export function HomePage() {
       <section className="hero">
         <h2>Chess where time is money</h2>
         <p>Your opponent's thinking time fills your purse. Spend it on reinforcements.</p>
-        <ol className="how">
-          <li>
-            <HourglassIcon />
-            <strong>Earn seeds</strong>
-            <span>Clocks count up. Every {settings.secondsPerCoin} seconds your opponent thinks earns you a seed.</span>
-          </li>
-          <li>
-            <ScrollIcon />
-            <strong>Shop the market</strong>
-            <span>Trade seeds for pieces at the Stump Market, even on their turn.</span>
-          </li>
-          <li>
-            <BackpackIcon />
-            <strong>Unpack a surprise</strong>
-            <span>Your backpack is secret. Drop a piece from it onto the board as your move.</span>
-          </li>
-        </ol>
       </section>
+
+      <ol className="how">
+        <li>
+          <HourglassIcon />
+          <strong>Earn seeds</strong>
+          <span>Clocks count up. Every {settings.secondsPerCoin} seconds your opponent thinks earns you a seed.</span>
+        </li>
+        <li>
+          <ScrollIcon />
+          <strong>Shop the market</strong>
+          <span>Trade seeds for pieces at the Stump Market, even on their turn.</span>
+        </li>
+        <li>
+          <BackpackIcon />
+          <strong>Unpack a surprise</strong>
+          <span>Your backpack is secret. Drop a piece from it onto the board as your move.</span>
+        </li>
+      </ol>
 
       <div className="home-grid">
         <section className="start-panel">
