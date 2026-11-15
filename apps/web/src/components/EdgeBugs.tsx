@@ -11,8 +11,8 @@ type Kind = 'caterpillar' | 'beetle' | 'ladybug' | 'ant';
 
 interface Bug {
   kind: Kind;
-  /** Distance from the window edge to this bug's lane. */
-  inset: number;
+  /** Which of the three lanes along the window edge this bug keeps to. */
+  lane: number;
   /** Distance along the track, in px (head position for the caterpillar). */
   s: number;
   dir: 1 | -1;
@@ -88,7 +88,7 @@ const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
 const makeBug = (kind: Kind, i: number, total: number, perimeter: number): Bug => ({
   kind,
-  inset: 8 + (i % 3) * 3,
+  lane: i % 3,
   s: (perimeter * (i + rand(0.15, 0.85))) / total,
   dir: Math.random() < 0.5 ? 1 : -1,
   speed: SPEED[kind] * rand(0.8, 1.2),
@@ -133,7 +133,8 @@ export function EdgeBugs() {
       if (reducedMotion.matches) draw(0);
     };
 
-    const at = (b: Bug, s: number) => pointAt(s, w, h, b.inset, CORNER);
+    // Lanes hug the edge more tightly on phones, where content runs close to it.
+    const at = (b: Bug, s: number) => pointAt(s, w, h, w < 600 ? 5 + b.lane * 2 : 8 + b.lane * 3, CORNER);
 
     const step = (b: Bug, dt: number) => {
       const here = at(b, b.s);
