@@ -27,9 +27,15 @@ server trusts the client-IP header that Caddy sets, and uses it for rate limitin
 3. In `apps/web/vercel.json`, replace `api.bugshop.example` in `connect-src` with your API domain (both the
    `https://` and `wss://` entries). Otherwise the CSP blocks the connection to your server.
 4. Make sure the deployed site's origin is listed in the server's `ALLOWED_ORIGINS`.
+5. Optional: set `VITE_DONATE_URL` to your donation page (an `https://` link). The "Keep the campfire burning"
+   sign on the home page only appears when it is set.
+6. Optional: turn on **Analytics** for the project in the Vercel dashboard. The app already includes
+   `@vercel/analytics`; until it is enabled there, its script just returns 404 and nothing is recorded.
 
 ## Checklist
 - [ ] `ALLOWED_ORIGINS` = exact web origin(s), e.g. `https://bugshop.example.com` (no trailing slash, no `*`)
 - [ ] CSP `connect-src` in `vercel.json` names your API domain
 - [ ] `VITE_SERVER_URL` set in Vercel
+- [ ] `VITE_DONATE_URL` set in Vercel (optional)
+- [ ] Web Analytics enabled in the Vercel dashboard (optional)
 - [ ] VPS firewall allows only 22/80/443

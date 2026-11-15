@@ -6,7 +6,8 @@ import { useLobbyList } from '../online/lobbyList';
 import { loadSettings, saveSettings } from '../game/settingsStore';
 import { useNow } from '../game/useNow';
 import { SettingsForm } from './SettingsForm';
-import { BackpackIcon, HourglassIcon, ScrollIcon, ShoeIcon, SeedIcon } from './icons';
+import { parseDonateUrl } from '../support';
+import { BackpackIcon, CampfireIcon, HourglassIcon, ScrollIcon, ShoeIcon, SeedIcon } from './icons';
 
 export function HomePage() {
   const [busy, setBusy] = useState<GameMode | null>(null);
@@ -81,7 +82,31 @@ export function HomePage() {
 
         <LobbyBoard />
       </div>
+
+      <TipJar />
     </main>
+  );
+}
+
+const DONATE_URL = parseDonateUrl(import.meta.env.VITE_DONATE_URL);
+
+/** Donation spot: the site is free, the server is not. Hidden until a donation link is configured. */
+function TipJar() {
+  if (!DONATE_URL) return null;
+  return (
+    <aside className="tip-jar" aria-label="Support Bugshop">
+      <CampfireIcon />
+      <div className="tip-jar-text">
+        <h3>Keep the campfire burning</h3>
+        <p>
+          Bugshop is free, with no ads and nothing to buy but knights. The server, sadly, does not accept seeds. If you're
+          having fun, toss a log on the fire and it stays lit for everyone.
+        </p>
+      </div>
+      <a className="button primary" href={DONATE_URL} target="_blank" rel="noopener noreferrer">
+        Toss a log on the fire
+      </a>
+    </aside>
   );
 }
 

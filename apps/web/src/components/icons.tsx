@@ -60,3 +60,13 @@ export function HourglassIcon({ className = '' }: { className?: string }) {
     </svg>
   );
 }
+
+export function CampfireIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`icon campfire-icon ${className}`} viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M8 43 40 35M8 35l32 8" stroke="var(--log, #5a3a22)" strokeWidth="5" strokeLinecap="round" fill="none" />
+      <path className="flame flame-outer" d="M24 38c-10-3-12-13-6-21 1 5 4 6 4 0 0-7 4-11 8-14-1 8 10 14 6 25-2 6-6 10-12 10Z" />
+      <path className="flame flame-inner" d="M24 38c-5-2-6-8-3-12 1 3 3 2 3-1 5 3 7 9 4 12-1 1-3 1-4 1Z" />
+    </svg>
+  );
+}

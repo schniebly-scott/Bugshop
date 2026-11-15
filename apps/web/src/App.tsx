@@ -1,8 +1,10 @@
+import { Analytics } from '@vercel/analytics/react';
 import { Backdrop } from './components/Backdrop';
 import { EdgeBugs } from './components/EdgeBugs';
 import { HomePage } from './components/HomePage';
 import { HotseatPage } from './components/HotseatPage';
 import { OnlineGamePage } from './components/OnlineGamePage';
+import { redactGameUrl } from './support';
 import { linkTo, parseRoute, usePath } from './router';
 
 export function App() {
@@ -35,6 +37,9 @@ export function App() {
         </main>
       )}
       <EdgeBugs />
+      {/* Page-view analytics, production only (the dev build would load a debug script
+          from another origin). Room ids are stripped before anything is sent. */}
+      {import.meta.env.PROD && <Analytics beforeSend={event => ({ ...event, url: redactGameUrl(event.url) })} />}
     </>
   );
 }

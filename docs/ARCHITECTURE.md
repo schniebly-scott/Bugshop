@@ -42,6 +42,10 @@ In engine terms, Bugshop is **Crazyhouse in which captured pieces do not go to t
 - On phones, small tablets and short windows (`max-width: 899px` or `max-height: 560px`) the play loop fits on one screen without scrolling: clocks, board, then the backpack and market flattened into two strips. Draw, resign and page controls sit below. The same markup is restyled in CSS, so there is no separate mobile component tree. Portrait stacks everything; landscape puts the strips beside the board.
 - Keep visible text short and concrete. Say what a number means ("1 seed per 60s"), and put secondary detail in `title`/`aria-label` rather than on screen.
 
+### Analytics and donations
+- The web app reports page views with Vercel Web Analytics (`@vercel/analytics`): cookieless, same-origin, and only in production builds. Game pages are reported as `/g/[room]`, because a private room ID is the invite secret.
+- The home page shows a donation sign ("Keep the campfire burning") when `VITE_DONATE_URL` is set to an https link. There are no accounts or payments in the app itself; the link just opens the donation page in a new tab.
+
 ### One repo, not two
 Use a **single monorepo**. The client and server must run the *exact same* rules code (`packages/rules`). In two repos you would have to publish and version that package and keep both sides in sync, which is a common source of desync bugs. Deploying from one repo is still easy: set the Vercel project's Root Directory to `apps/web`, and have GitHub Actions deploy `apps/server` to the VPS only when `apps/server/**` or `packages/**` change.
 
