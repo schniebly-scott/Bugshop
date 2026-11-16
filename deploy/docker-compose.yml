@@ -35,6 +35,13 @@ services:
       - no-new-privileges:true
     mem_limit: 512m
     pids_limit: 256
+    # Logs contain IP addresses: rotate them so they are kept for days, not forever
+    # (the Privacy Policy relies on this).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   caddy:
     image: caddy:2.11.9-alpine@sha256:0bbb055bda6793c999bde78b1b5ce3e89f829fb031af2cf50056ea1246559fee
@@ -58,6 +65,13 @@ services:
     security_opt:
       - no-new-privileges:true
     mem_limit: 256m
+    # Logs contain IP addresses: rotate them so they are kept for days, not forever
+    # (the Privacy Policy relies on this).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   bugshop_data:

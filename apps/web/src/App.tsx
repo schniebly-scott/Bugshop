@@ -5,6 +5,7 @@ import { HomePage } from './components/HomePage';
 import { HotseatPage } from './components/HotseatPage';
 import { OnlineGamePage } from './components/OnlineGamePage';
 import { AccountChip, AccountGate, ResetPasswordPage } from './components/Account';
+import { PrivacyPage, TermsPage } from './components/LegalPages';
 import { redactUrl } from './support';
 import { linkTo, parseRoute, usePath } from './router';
 
@@ -42,6 +43,8 @@ export function App() {
         </AccountGate>
       )}
       {route.page === 'reset-password' && <ResetPasswordPage />}
+      {route.page === 'privacy' && <PrivacyPage />}
+      {route.page === 'terms' && <TermsPage />}
       {route.page === 'not-found' && (
         <main className="notice">
           <h2>Lost in the woods</h2>
@@ -49,6 +52,13 @@ export function App() {
           <a className="button primary" href="/" onClick={linkTo('/')}>Back to camp</a>
         </main>
       )}
+      <footer className="site-footer">
+        <a href="/privacy" onClick={linkTo('/privacy')}>Privacy</a>
+        <span aria-hidden="true">·</span>
+        <a href="/terms" onClick={linkTo('/terms')}>Terms</a>
+        <span aria-hidden="true">·</span>
+        <a href="https://github.com/schniebly-scott/Bugshop" target="_blank" rel="noopener noreferrer">Source code</a>
+      </footer>
       <EdgeBugs />
       {/* Page-view analytics, production only (the dev build would load a debug script
           from another origin). Room ids are stripped before anything is sent. */}

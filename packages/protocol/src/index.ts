@@ -21,7 +21,7 @@ export interface GameSettings {
   squishPrice: number;
 }
 
-export const DEFAULT_SETTINGS: GameSettings = { secondsPerCoin: 60, squishPrice: 30 };
+export const DEFAULT_SETTINGS: GameSettings = { secondsPerCoin: 25, squishPrice: 20 };
 
 /**
  * The only allowed values. A small fixed set keeps lobbies easy to scan and

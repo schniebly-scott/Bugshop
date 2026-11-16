@@ -55,6 +55,8 @@ function SignInForm({ reason }: { reason?: string }) {
   const [error, setError] = useState<AccountError | null>(null);
   /** Set once a mail is on its way: what it is for. */
   const [mailed, setMailed] = useState<'verify' | 'reset' | null>(null);
+  /** Sign-up only: confirms age 16+ and agreement to the Terms and Privacy Policy. */
+  const [agreed, setAgreed] = useState(false);
 
   // A failed Google/Apple round trip comes back with ?signin=failed.
   const [socialFailed, setSocialFailed] = useState(false);
@@ -69,6 +71,7 @@ function SignInForm({ reason }: { reason?: string }) {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (busy) return;
+    if (mode === 'sign-up' && !agreed) return;
     setBusy(true);
     setError(null);
     setSocialFailed(false);
@@ -151,6 +154,10 @@ function SignInForm({ reason }: { reason?: string }) {
               </button>
             )}
           </div>
+          <p className="legal-note">
+            By continuing, you confirm you're 16 or older and agree to the <LegalLink to="/terms">Terms</LegalLink> and{' '}
+            <LegalLink to="/privacy">Privacy Policy</LegalLink>.
+          </p>
           <p className="or-divider">or with email</p>
         </>
       )}
@@ -185,13 +192,22 @@ function SignInForm({ reason }: { reason?: string }) {
             {mode === 'sign-up' && <small>At least {MIN_PASSWORD_LENGTH} characters.</small>}
           </label>
         )}
+        {mode === 'sign-up' && (
+          <label className="agree">
+            <input type="checkbox" required checked={agreed} onChange={e => setAgreed(e.target.checked)} />
+            <span>
+              I'm 16 or older and agree to the <LegalLink to="/terms">Terms of Service</LegalLink> and{' '}
+              <LegalLink to="/privacy">Privacy Policy</LegalLink>.
+            </span>
+          </label>
+        )}
         <ErrorLine error={error} />
         {socialFailed && !error && (
           <p className="error" role="alert">
             That sign-in didn't go through. Try again, or use your email.
           </p>
         )}
-        <button type="submit" className="primary" disabled={busy || !email || (mode !== 'forgot' && !password)}>
+        <button type="submit" className="primary" disabled={busy || !email || (mode !== 'forgot' && !password) || (mode === 'sign-up' && !agreed)}>
           {busy ? 'One moment…' : mode === 'sign-up' ? 'Create account' : mode === 'forgot' ? 'Send the link' : 'Sign in'}
         </button>
       </form>
@@ -384,4 +400,13 @@ export function AccountChip() {
     );
   }
   return null;
+}
+
+/** Link to a legal page in a new tab, so a half-filled form isn't lost. */
+function LegalLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <a href={to} target="_blank" rel="noopener">
+      {children}
+    </a>
+  );
 }

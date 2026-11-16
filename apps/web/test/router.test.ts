@@ -8,6 +8,8 @@ describe('parseRoute', () => {
   it('maps known paths', () => {
     expect(parseRoute('/')).toEqual({ page: 'home' });
     expect(parseRoute('/hotseat')).toEqual({ page: 'hotseat' });
+    expect(parseRoute('/privacy')).toEqual({ page: 'privacy' });
+    expect(parseRoute('/terms')).toEqual({ page: 'terms' });
     expect(parseRoute('/reset-password')).toEqual({ page: 'reset-password' });
     expect(parseRoute('/g/D30D2qjIRkA3KJ_C')).toEqual({ page: 'game', roomId: 'D30D2qjIRkA3KJ_C' });
   });

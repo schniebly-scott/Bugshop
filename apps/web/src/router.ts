@@ -29,6 +29,8 @@ export type Route =
   | { page: 'home' }
   | { page: 'hotseat' }
   | { page: 'reset-password' }
+  | { page: 'privacy' }
+  | { page: 'terms' }
   | { page: 'game'; roomId: string }
   | { page: 'not-found' };
 
@@ -39,6 +41,8 @@ export const parseRoute = (path: string): Route => {
   if (path === '/' || path === '') return { page: 'home' };
   if (path === '/hotseat') return { page: 'hotseat' };
   if (path === '/reset-password') return { page: 'reset-password' };
+  if (path === '/privacy') return { page: 'privacy' };
+  if (path === '/terms') return { page: 'terms' };
   const m = /^\/g\/([^/]+)$/.exec(path);
   if (m && ROOM_ID_PATTERN.test(m[1]!)) return { page: 'game', roomId: m[1]! };
   return { page: 'not-found' };
