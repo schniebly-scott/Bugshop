@@ -33,20 +33,20 @@ export function HomePage() {
   return (
     <main className="home">
       <section className="hero">
-        <h2>Chess where time is money</h2>
-        <p>Your opponent's thinking time fills your purse. Spend it on reinforcements.</p>
+        <h2>BugShop Chess</h2>
+        <p>A variant of chess inspired Bughouse and shopping. Your opponent's thinking time gives you more pieces.</p>
       </section>
 
       <ol className="how">
         <li>
           <HourglassIcon />
           <strong>Earn seeds</strong>
-          <span>Clocks count up. Every {settings.secondsPerCoin} seconds your opponent thinks earns you a seed.</span>
+          <span>Clocks count up. The longer that your opponent thinks, the more seeds you earn.</span>
         </li>
         <li>
           <ScrollIcon />
           <strong>Shop the market</strong>
-          <span>Trade seeds for pieces at the Stump Market, even on their turn.</span>
+          <span>Trade seeds for pieces at the Stump Market.</span>
         </li>
         <li>
           <BackpackIcon />
