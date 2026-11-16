@@ -15,7 +15,29 @@ Example domains below: `bugshop.example.com` for the web app and `api.bugshop.ex
    docker compose up -d --build
    ```
    Caddy fetches the TLS certificate automatically on first start.
-4. Updating: `git pull && docker compose up -d --build`.
+4. Install the deploy script (root-owned, so the repo can't change it on its own):
+   `install -o root -g root -m 755 /opt/bugshop/deploy/bugshop-deploy.sh /usr/local/bin/bugshop-deploy`.
+   Manual update any time: `bugshop-deploy` (deploys the latest commit on `main`).
+
+## Automatic deploys (GitHub Actions)
+
+`.github/workflows/deploy.yml` deploys after **CI passes on a push to `main`**. It sends the exact commit that passed CI,
+and can also be run by hand from the Actions tab.
+
+How it's locked down:
+- **A key that can only deploy.** The VPS has a dedicated deploy key in `root`'s `authorized_keys`:
+  `restrict,command="/usr/local/bin/bugshop-deploy" ssh-ed25519 … github-actions-deploy@bugshop`.
+  `restrict` blocks shells, port forwarding and agent forwarding, and `command=` forces the deploy script, whatever the client asks for.
+- **Only commits on main.** The script deploys a full commit SHA only if it is on `origin/main`.
+- **Only main can read the key.** It is stored as the `DEPLOY_SSH_KEY` secret of the GitHub environment `production`,
+  which only `main` may deploy to.
+- **Pinned server identity.** `DEPLOY_HOST` and `DEPLOY_KNOWN_HOSTS` are environment variables, and the workflow refuses to
+  connect if the server's host key changes.
+- **Least privilege.** The workflow has no GitHub token permissions, and deploys never overlap.
+
+To revoke automatic deploys: delete that line from `/root/.ssh/authorized_keys` on the VPS.
+To rotate the key: generate a new one, replace the `authorized_keys` line, then run
+`gh secret set DEPLOY_SSH_KEY --env production < newkey` and delete the local private key.
 
 The server container is never exposed directly (no `ports:`). Only Caddy is. That matters because the
 server trusts the client-IP header that Caddy sets, and uses it for rate limiting.
