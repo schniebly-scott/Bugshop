@@ -93,3 +93,85 @@ export function AppleIcon() {
     </svg>
   );
 }
+
+/** Portraits of the four bots, weakest to strongest. */
+export function BugIcon({ level }: { level: 'larva' | 'beetle' | 'mantis' | 'hornet' | 'scorpion' | 'tarantula' }) {
+  return (
+    <svg className={`icon bug-icon bug-${level}`} viewBox="0 0 48 48" aria-hidden="true">
+      {level === 'larva' && (
+        <>
+          <path d="M8 33q4-5 8 0t8 0 8 0 8 0" fill="none" stroke="#6e9a34" strokeWidth="13" strokeLinecap="round" />
+          <path d="M8 33q4-5 8 0t8 0 8 0" fill="none" stroke="#a5cf5a" strokeWidth="9" strokeLinecap="round" />
+          <circle cx="39" cy="31" r="7" fill="#c4572a" />
+          <circle cx="41.5" cy="29.5" r="1.6" fill="#2a2118" />
+          <path d="M40 24l2-6M44 26l4-4" stroke="#2a2118" strokeWidth="1.6" strokeLinecap="round" />
+        </>
+      )}
+      {level === 'beetle' && (
+        <>
+          <path d="M12 20 4 15M11 28H3M13 35l-8 6M36 20l8-5M37 28h8M35 35l8 6" stroke="#2a2118" strokeWidth="2.2" strokeLinecap="round" />
+          <ellipse cx="24" cy="29" rx="13" ry="15" fill="#1f6b5a" />
+          <path d="M24 15v29" stroke="#12382f" strokeWidth="1.8" />
+          <path d="M16 22q-3 8 0 16" stroke="rgba(255,255,255,.4)" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M13 17q11-9 22 0v3H13z" fill="#1c231c" />
+          <circle cx="24" cy="9" r="5" fill="#1c231c" />
+          <path d="M21 5l-4-4M27 5l4-4" stroke="#1c231c" strokeWidth="1.8" strokeLinecap="round" />
+        </>
+      )}
+      {level === 'mantis' && (
+        <>
+          <path d="M24 16v26" stroke="#5c8a2c" strokeWidth="7" strokeLinecap="round" />
+          <path d="M21 30 11 44M27 30l10 14M21 36 14 46M27 36l7 10" stroke="#3f6b1e" strokeWidth="2" strokeLinecap="round" />
+          <path d="M22 19 11 13l3 13M26 19l11-6-3 13" fill="none" stroke="#6da334" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M15 9q9-8 18 0-4 9-9 9t-9-9z" fill="#7fb53c" />
+          <circle cx="17.5" cy="9.5" r="3" fill="#2a2118" />
+          <circle cx="30.5" cy="9.5" r="3" fill="#2a2118" />
+          <path d="M21 5 18 0M27 5l3-5" stroke="#3f6b1e" strokeWidth="1.6" strokeLinecap="round" />
+        </>
+      )}
+      {level === 'scorpion' && (
+        <>
+          <path d="M17 28 6 22M16 33H4M17 38 7 44M31 28l11-6M32 33h12M31 38l10 6" stroke="#5b2b14" strokeWidth="2.2" strokeLinecap="round" />
+          <path d="M18 22 8 14M30 22l10-8" stroke="#8a3d1c" strokeWidth="3.4" strokeLinecap="round" />
+          <path d="M8 14 3 9l6-2 3 4zM40 14l5-5-6-2-3 4z" fill="#a44a22" />
+          <ellipse cx="24" cy="31" rx="8.5" ry="12" fill="#a44a22" />
+          <path d="M16.5 27h15M16 32h16M17 37h14" stroke="#6e2f15" strokeWidth="1.6" />
+          <path d="M24 20Q22 8 30 5q8-2 9 6" fill="none" stroke="#8a3d1c" strokeWidth="4" strokeLinecap="round" />
+          <path d="M39 11l4 6-7-1z" fill="#2a1408" />
+          <circle cx="21" cy="24" r="1.3" fill="#2a1408" />
+          <circle cx="27" cy="24" r="1.3" fill="#2a1408" />
+        </>
+      )}
+      {level === 'tarantula' && (
+        <>
+          <path
+            d="M18 22Q8 12 3 20M17 26Q6 22 2 32M17 31Q8 32 4 43M19 35q-5 6-5 12M30 22q10-10 15-2M31 26q11-4 15 6M31 31q9 1 13 12M29 35q5 6 5 12"
+            fill="none"
+            stroke="#3a2a22"
+            strokeWidth="3.4"
+            strokeLinecap="round"
+          />
+          <ellipse cx="24" cy="33" rx="9.5" ry="10.5" fill="#4a352b" />
+          <path d="M19 31q5-5 10 0M18.5 36q5.5-4 11 0" stroke="#d98a3a" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <ellipse cx="24" cy="20" rx="7" ry="6" fill="#3a2a22" />
+          <circle cx="21.5" cy="17.5" r="1.4" fill="#e9d9a8" />
+          <circle cx="26.5" cy="17.5" r="1.4" fill="#e9d9a8" />
+          <path d="M21 14l-1-5M27 14l1-5" stroke="#3a2a22" strokeWidth="2.6" strokeLinecap="round" />
+        </>
+      )}
+      {level === 'hornet' && (
+        <>
+          <ellipse cx="11" cy="21" rx="11" ry="5" transform="rotate(-24 11 21)" fill="rgba(255,255,255,.75)" stroke="#8a8f84" />
+          <ellipse cx="37" cy="21" rx="11" ry="5" transform="rotate(24 37 21)" fill="rgba(255,255,255,.75)" stroke="#8a8f84" />
+          <path d="M24 46 20 40h8z" fill="#1c1a17" />
+          <ellipse cx="24" cy="31" rx="8.5" ry="11" fill="#e9b12c" />
+          <path d="M16.5 27h15M16 32h16M18 37h12" stroke="#1c1a17" strokeWidth="3" />
+          <ellipse cx="24" cy="18" rx="6.5" ry="5.5" fill="#1c1a17" />
+          <circle cx="24" cy="9.5" r="5.5" fill="#e9b12c" />
+          <path d="M20 8l3 2M28 8l-3 2" stroke="#1c1a17" strokeWidth="2.2" strokeLinecap="round" />
+          <path d="M21 5 17 0M27 5l4-5" stroke="#1c1a17" strokeWidth="1.6" strokeLinecap="round" />
+        </>
+      )}
+    </svg>
+  );
+}

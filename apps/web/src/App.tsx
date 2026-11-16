@@ -3,6 +3,7 @@ import { Backdrop } from './components/Backdrop';
 import { EdgeBugs } from './components/EdgeBugs';
 import { HomePage } from './components/HomePage';
 import { HotseatPage } from './components/HotseatPage';
+import { BotPage } from './components/BotPage';
 import { OnlineGamePage } from './components/OnlineGamePage';
 import { AccountChip, AccountGate, ResetPasswordPage } from './components/Account';
 import { PrivacyPage, TermsPage } from './components/LegalPages';
@@ -36,6 +37,11 @@ export function App() {
       {route.page === 'hotseat' && (
         <AccountGate>
           <HotseatPage />
+        </AccountGate>
+      )}
+      {route.page === 'bot' && (
+        <AccountGate reason="Sign in to play against the bots.">
+          <BotPage />
         </AccountGate>
       )}
       {route.page === 'game' && (

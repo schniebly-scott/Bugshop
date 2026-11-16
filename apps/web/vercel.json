@@ -7,12 +7,13 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-hashes' 'sha256-SyXRxMCl6H7Kgy9uTmu1UZqVBsRmMBF4sHRiTO3FQc0='; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.bugshopchess.com wss://api.bugshopchess.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-hashes' 'sha256-SyXRxMCl6H7Kgy9uTmu1UZqVBsRmMBF4sHRiTO3FQc0='; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.bugshopchess.com wss://api.bugshopchess.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
         },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
       ]
     }

@@ -8,6 +8,7 @@ describe('parseRoute', () => {
   it('maps known paths', () => {
     expect(parseRoute('/')).toEqual({ page: 'home' });
     expect(parseRoute('/hotseat')).toEqual({ page: 'hotseat' });
+    expect(parseRoute('/bot')).toEqual({ page: 'bot' });
     expect(parseRoute('/privacy')).toEqual({ page: 'privacy' });
     expect(parseRoute('/terms')).toEqual({ page: 'terms' });
     expect(parseRoute('/account')).toEqual({ page: 'account' });
