@@ -5,7 +5,7 @@ Chess variant with a shop: the time your opponent uses becomes coins for you. Yo
 ## Layout
 pnpm monorepo (`pnpm-workspace.yaml`):
 - `packages/rules`: shared, pure TypeScript rules engine (built on chessops). There is no I/O; every function takes `now` explicitly. Client and server must both use it, so never re-implement rules elsewhere.
-- `apps/web`: React + Vite SPA (chessground board). Hotseat and bot modes run fully client-side.
+- `apps/web`: React + Vite SPA (chessground board). Hotseat and bot modes run fully client-side; the bot (`src/bot/`) is a TypeScript search in a same-origin Web Worker, plus Fairy-Stockfish WASM (served from `/fsf/`) for the two top levels.
 - `packages/protocol`: client/server message names and payload types (types and constants only).
 - `apps/server`: Node + Colyseus 0.18, the authoritative game server. Also hosts accounts (Better Auth at `/api/auth/*`), Elo ratings and the SQLite database (`node:sqlite`). Node 24 runs the `.ts` sources directly (type stripping), so code must stay "erasable" (no enums, namespaces or constructor parameter properties; `erasableSyntaxOnly` enforces this) and relative imports use `.ts` extensions.
 - `deploy/`: Docker Compose + Caddy for the VPS.
@@ -25,6 +25,9 @@ pnpm monorepo (`pnpm-workspace.yaml`):
 **Frontend**
 - Never use `dangerouslySetInnerHTML`, `eval`, `new Function`, or string-built HTML/URLs from user input. Player names and chat are rendered as text only.
 - Keep the strict CSP and security headers in `apps/web/vercel.json`. If you add an external origin (API, websocket, fonts), add it to `connect-src`/etc. explicitly, never `*` or `unsafe-eval`.
+- `script-src` allows `'wasm-unsafe-eval'` for one reason: the Fairy-Stockfish engine. It permits WebAssembly compilation only; JavaScript `eval` stays blocked. Don't widen it.
+- The site is cross-origin isolated (`Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp`) because the engine's threads need `SharedArrayBuffer`. Under `require-corp`, a resource from another origin (image, script, font, iframe) is blocked unless it is served with CORS or CORP. Keep assets same-origin; if you must add a cross-origin one, check it still loads in `vite preview`.
+- The engine files under `/fsf/` come unmodified from the pinned npm package (`vite.config.ts`), with its license files. Its moves are untrusted text: `stockfish.ts` checks their shape, and `applyAction` decides legality.
 - The only inline-style allowance is one `'unsafe-hashes'` hash in `style-src`, for chessground's `style="color-scheme:light only"` on its SVG layers (`wrap.js`). If a chessground upgrade changes that string, update the hash; never fall back to `'unsafe-inline'`. `vite preview` serves the same headers (read from `vercel.json`), so check the browser console there for CSP violations.
 - chessground writes `drawable` custom SVG shapes and shape labels via `innerHTML`. Never pass user-controlled content into them.
 - Page analytics (`@vercel/analytics`, production builds only) are same-origin (`/_vercel/insights/*`), so the CSP needs no extra origin. Every event goes through `redactUrl()` (`apps/web/src/support.ts`) so private room IDs and the password-reset token never reach analytics. Keep that `beforeSend`, and don't add custom events that carry room IDs, names or game state.
@@ -42,9 +45,10 @@ pnpm monorepo (`pnpm-workspace.yaml`):
 - Every client message gets a strict zod schema (`apps/server/src/schemas.ts`, `z.strictObject`, bounded strings) registered with Colyseus `validate()`. An invalid message disconnects the client. Never add a handler without a schema.
 - Game time comes only from `serverNow()` (`src/serverClock.ts`). Its test offset must stay test-only.
 - Existing limits (keep or tighten them): 4 KB message cap, `maxMessagesPerSecond`, per-IP matchmaking limit in static `onAuth` (shared by the lobby list room), `MAX_ROOMS`, and room lifetime timers.
+- The bot plays by the same hidden-information rule: `chooseMove` empties the opponent's pocket before searching. Don't feed it the human's pocket, purchases or spending.
 - **Hidden information:** a player's pocket, purchases and spending are secret from their opponent. Every snapshot goes through `redactFor()` (`apps/server/src/redact.ts`) per recipient; never `broadcast()` raw game state. Anything new that reveals pocket contents (logs, lobby metadata, error messages) is a leak.
 - **Account deletion must be complete.** `/account` → Better Auth `delete-user` (password, or a sign-in under a day old) → `beforeDelete` → `PlayerStore.deleteAccountData()` (`apps/server/src/db.ts`). Any new table or file that stores data about a user must be cleaned up there too, and covered in `apps/server/test/account-deletion.test.ts`. The Privacy Policy promises this.
-- The lobby list sends only `LobbyListing` fields (`roomId`, `settings`, `createdAt`), never raw Colyseus room records.
+- The lobby list sends only `LobbyListing` fields (`roomId`, `settings`, `host` name and rating, `createdAt`), never raw Colyseus room records.
 - Private room IDs are the invite secret: 16 random characters (`generateId(16)`, crypto RNG). Don't shorten them, and never log them alongside anything that identifies a user.
 - CORS and the WebSocket origin check allow only `ALLOWED_ORIGINS`. Colyseus' defaults allow any origin, and `app.ts` overrides them, so keep that override.
 - Colyseus takes the client IP from `X-Real-IP`/`X-Forwarded-For` without checking. That's only safe because Caddy overwrites those headers and the server port is never published (`deploy/docker-compose.yml`). Keep it that way.

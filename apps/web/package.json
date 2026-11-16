@@ -18,6 +18,7 @@
     "@lichess-org/chessground": "10.5.0",
     "@vercel/analytics": "2.0.1",
     "chessops": "0.15.1",
+    "fairy-stockfish-nnue.wasm": "1.1.12",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
