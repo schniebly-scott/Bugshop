@@ -71,6 +71,17 @@ export function HomePage() {
               </button>
               <a
                 className="big-button"
+                href="/bot"
+                onClick={e => {
+                  saveSettings(settings); // the bot game starts with the settings chosen here
+                  linkTo('/bot')(e);
+                }}
+              >
+                Play a bot
+                <small>Four difficulty levels, unrated</small>
+              </a>
+              <a
+                className="big-button"
                 href="/hotseat"
                 onClick={e => {
                   saveSettings(settings); // hotseat starts with the settings chosen here

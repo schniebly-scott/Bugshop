@@ -18,7 +18,7 @@ In engine terms, Bugshop is **Crazyhouse in which captured pieces do not go to t
  Browser ───────▶│ React + Vite SPA (static)                  │
    │             │  • chessground board + pocket/shop UI      │
    │             │  • hotseat + vs-bot run 100% client-side   │
-   │             │  • bot = Fairy-Stockfish WASM in a Worker  │
+   │             │  • bot = TS alpha-beta search in a Worker  │
    │             └────────────────────────────────────────────┘
    │ wss://api.bugshop.xxx
    ▼
@@ -53,6 +53,16 @@ Nobody plays without an account: not online, and not pass-and-play either.
 - **Storage**: one SQLite file through Node's built-in `node:sqlite` (no native module to build). Better Auth owns `user`, `session`, `account`, `verification`; Bugshop adds `player` (name, rating, record) and `game_result` (who, result, rating changes). Room IDs are not stored. All SQL is prepared statements with bound parameters.
 - **Mail** goes through Resend's HTTP API (`mail.ts`). Without a key, development prints the mail to the server log and skips address confirmation; production refuses to start.
 
+### Playing a bot
+`/bot` is a practice game against the computer. It runs entirely in the browser (no server CPU), is not rated, and needs a signed-in account like every other way to play.
+
+- **Engine** (`apps/web/src/bot/engine.ts`): iterative-deepening alpha-beta over `BugshopPosition`, the same class the rules engine uses, so the bot and the rules can't disagree about legality. Quiescence search on captures, a check extension (drops make checks dangerous), and a small material + piece-square evaluation. It runs in a Web Worker (`worker.ts`, same origin, so the CSP is unchanged) with an inline fallback. The earlier plan was Fairy-Stockfish WASM; a TypeScript search was chosen instead because it needs no new dependency, no WASM or cross-origin-isolation headers, and understands the shop natively. It is weaker than Stockfish, which is fine for a casual sparring partner.
+- **The shop**: each turn the bot may buy one piece and drop it at once. Unspent seeds count as a little under a pawn each in the evaluation, so a purchase has to be a good move, not just an affordable one. If the only way out of check is to buy a blocker, it finds it.
+- **Fair play**: the bot never sees the human's pocket or purchases. The opponent's pocket is emptied before searching, exactly as `redactFor()` does for an online opponent. Its own pocket stays hidden from the human until the game ends.
+- **Levels** (`levels.ts`), weakest first: Larva (1 ply, large random error, sometimes plays any legal move), Beetle (2 plies, no quiescence, so it misses replies), Mantis (3 plies plus quiescence), Hornet (deepens for 1.5 s, typically 4-5 plies). Weaker levels also look at the shop less often.
+- **Tempo** (`pace.ts`): the bot's thinking time is the human's income, so an instant bot would leave the human with no seeds. It plays at about the human's own average pace (1.2 s to 20 s per move), 1.4x slower on Larva down to 0.6x on Hornet. A faster bot hands you fewer seeds, which is part of the difficulty.
+- **Squish and draws**: Mantis and Hornet buy Squish only against a player who has been away from the board for 90 s and much longer than their usual move, which is what Squish is for. A draw offer is accepted only when the bot is clearly worse.
+
 ### Analytics and donations
 - The web app reports page views with Vercel Web Analytics (`@vercel/analytics`): cookieless, same-origin, and only in production builds. Game pages are reported as `/g/[room]`, because a private room ID is the invite secret.
 - The home page shows a donation sign ("Keep the campfire burning") when `VITE_DONATE_URL` is set to an https link. There are no accounts or payments in the app itself; the link just opens the donation page in a new tab.
@@ -69,8 +79,8 @@ Use a **single monorepo**. The client and server must run the *exact same* rules
 - `apps/web`: React + Vite + TypeScript
   - Board: **chessground** (lichess board, already supports drag-to-drop from a pocket). Use **@lichess-org/chessground** styles for pieces.
   - State: React state plus `useSyncExternalStore` for the online session (no state library needed). Networking: `@colyseus/sdk`.
-  - Routes (tiny History-API router in `src/router.ts`): `/` (home), `/hotseat`, `/g/:roomId` (online game; also the invite link). `/bot` is planned.
-  - Bot: **Fairy-Stockfish WASM** (`fairy-stockfish-nnue.wasm` / `ffish`) in a Web Worker. Define a custom variant in `variants.ini` (`pieceDrops = true`, `capturesToHand = false`) and pass the pocket in the FEN. The bot's shopping uses a simple heuristic in TS (e.g. buy the best piece it can afford when its eval drops). This costs **$0 in server CPU**.
+  - Routes (tiny History-API router in `src/router.ts`): `/` (home), `/hotseat`, `/bot` (practice against the computer), `/g/:roomId` (online game; also the invite link).
+  - Bot: see "Playing a bot" below.
 - `packages/protocol`: message names and payload types shared by client and server (types and constants only).
 - `apps/server`: Node + **Colyseus** 0.18 (MIT). Node 24 runs the TypeScript directly, with no build step. It provides rooms, the live room listing behind the lobby list, private rooms (`create` → share ID), messaging and reconnection, so none of that is hand-written.
   - `BugshopRoom` validates every action through `packages/rules`. Clients never send clock values.
@@ -97,7 +107,7 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 2. ~~`apps/web` hotseat mode: board, pocket, shop panel and count-up clocks, fully offline.~~ (done)
 3. ~~`apps/server` Colyseus room plus private invite links and public lobbies.~~ (done, see "Online play")
 4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS (files ready in `deploy/`, see `deploy/README.md`). Auto-deploy after CI via GitHub Actions with a forced-command SSH key (done).
-5. Vs-bot via Fairy-Stockfish WASM, plus the shop heuristic.
+5. Done: vs-bot (own search in TypeScript, four levels).
 6. Done: accounts (Better Auth) and Elo ratings. Later: game replays, rating history, leaderboards.
 
 ## Online play (as built)
@@ -149,11 +159,10 @@ How this affects the implementation:
 
 ## Still open
 - Should Squish's price scale with game length?
-- Should the bot know about Squish, e.g. buy it if a human goes AFK?
 - Lobby list extras: filter by settings or rating range.
 
 ## Verification
 - `pnpm -r test`: rules unit tests (including a scripted full game with purchases).
 - Run server + web locally, open two browser windows and play via a private link. Confirm the coins match the opponent's elapsed time and the server rejects illegal drops or purchases.
 - Kill one tab mid-game and confirm reconnection restores the state.
-- Bot: play a game in `/play/bot` and confirm it makes legal drops.
+- Bot: play a game at `/bot` and confirm it makes legal drops (`apps/web/test/bot.test.ts` plays whole bot-vs-bot games through the rules engine).

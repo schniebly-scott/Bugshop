@@ -28,6 +28,7 @@ export const linkTo = (path: string) => (e: MouseEvent) => {
 export type Route =
   | { page: 'home' }
   | { page: 'hotseat' }
+  | { page: 'bot' }
   | { page: 'reset-password' }
   | { page: 'game'; roomId: string }
   | { page: 'not-found' };
@@ -38,6 +39,7 @@ export const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{4,32}$/;
 export const parseRoute = (path: string): Route => {
   if (path === '/' || path === '') return { page: 'home' };
   if (path === '/hotseat') return { page: 'hotseat' };
+  if (path === '/bot') return { page: 'bot' };
   if (path === '/reset-password') return { page: 'reset-password' };
   const m = /^\/g\/([^/]+)$/.exec(path);
   if (m && ROOM_ID_PATTERN.test(m[1]!)) return { page: 'game', roomId: m[1]! };

@@ -5,7 +5,7 @@ Chess variant with a shop: the time your opponent uses becomes coins for you. Yo
 ## Layout
 pnpm monorepo (`pnpm-workspace.yaml`):
 - `packages/rules`: shared, pure TypeScript rules engine (built on chessops). There is no I/O; every function takes `now` explicitly. Client and server must both use it, so never re-implement rules elsewhere.
-- `apps/web`: React + Vite SPA (chessground board). Hotseat and bot modes run fully client-side.
+- `apps/web`: React + Vite SPA (chessground board). Hotseat and bot modes run fully client-side; the bot (`src/bot/`) is a TypeScript search in a same-origin Web Worker.
 - `packages/protocol`: client/server message names and payload types (types and constants only).
 - `apps/server`: Node + Colyseus 0.18, the authoritative game server. Also hosts accounts (Better Auth at `/api/auth/*`), Elo ratings and the SQLite database (`node:sqlite`). Node 24 runs the `.ts` sources directly (type stripping), so code must stay "erasable" (no enums, namespaces or constructor parameter properties; `erasableSyntaxOnly` enforces this) and relative imports use `.ts` extensions.
 - `deploy/`: Docker Compose + Caddy for the VPS.
@@ -42,8 +42,9 @@ pnpm monorepo (`pnpm-workspace.yaml`):
 - Every client message gets a strict zod schema (`apps/server/src/schemas.ts`, `z.strictObject`, bounded strings) registered with Colyseus `validate()`. An invalid message disconnects the client. Never add a handler without a schema.
 - Game time comes only from `serverNow()` (`src/serverClock.ts`). Its test offset must stay test-only.
 - Existing limits (keep or tighten them): 4 KB message cap, `maxMessagesPerSecond`, per-IP matchmaking limit in static `onAuth` (shared by the lobby list room), `MAX_ROOMS`, and room lifetime timers.
+- The bot plays by the same hidden-information rule: `chooseMove` empties the opponent's pocket before searching. Don't feed it the human's pocket, purchases or spending.
 - **Hidden information:** a player's pocket, purchases and spending are secret from their opponent. Every snapshot goes through `redactFor()` (`apps/server/src/redact.ts`) per recipient; never `broadcast()` raw game state. Anything new that reveals pocket contents (logs, lobby metadata, error messages) is a leak.
-- The lobby list sends only `LobbyListing` fields (`roomId`, `settings`, `createdAt`), never raw Colyseus room records.
+- The lobby list sends only `LobbyListing` fields (`roomId`, `settings`, `host` name and rating, `createdAt`), never raw Colyseus room records.
 - Private room IDs are the invite secret: 16 random characters (`generateId(16)`, crypto RNG). Don't shorten them, and never log them alongside anything that identifies a user.
 - CORS and the WebSocket origin check allow only `ALLOWED_ORIGINS`. Colyseus' defaults allow any origin, and `app.ts` overrides them, so keep that override.
 - Colyseus takes the client IP from `X-Real-IP`/`X-Forwarded-For` without checking. That's only safe because Caddy overwrites those headers and the server port is never published (`deploy/docker-compose.yml`). Keep it that way.

@@ -746,7 +746,7 @@ cg-board square.check {
   box-shadow: inset 0 0 18px rgba(120, 80, 30, 0.2), var(--shadow);
 }
 .start-panel h3, .noticeboard h3 { margin: 0 0 12px; font: 700 1.3rem var(--serif); color: var(--wood-3); }
-.start-actions { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.start-actions { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .start-panel .error { margin: 12px 0 0; }
 .big-button {
   display: flex;
@@ -770,6 +770,38 @@ a.big-button:hover { box-shadow: 0 2px 6px rgba(58, 44, 24, 0.3); }
 .big-button.primary { color: #fff; background: var(--green-btn); border-color: var(--green-btn-edge); }
 .big-button.primary small { color: rgba(255, 255, 255, 0.9); }
 .big-button:disabled { border-style: solid; opacity: 0.6; }
+
+/* ---------- bot setup ---------- */
+.bot-setup { max-width: 760px; margin: 0 auto; padding: 8px 16px 32px; }
+.bot-setup .start-panel { display: grid; gap: 14px; }
+.bot-setup h2 { margin: 0; font: 700 1.5rem var(--serif); color: var(--wood-3); }
+.bot-setup-note { margin: -6px 0 0; color: var(--ink-soft); }
+.bot-setup .settings { margin: 0; }
+.bot-levels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.bot-level {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 4px;
+  min-height: 0;
+  padding: 10px 8px 12px;
+  text-align: center;
+  background: var(--parchment-0);
+  border: 2px solid var(--parchment-edge);
+  border-radius: 12px;
+}
+.bot-level .bug-icon { width: 52px; height: 52px; }
+.bot-level strong { font: 700 1.1rem var(--serif); }
+.bot-level small { font-weight: 400; font-size: 0.84rem; line-height: 1.3; color: var(--ink-soft); }
+.bot-level.chosen { border-color: var(--green-btn); box-shadow: 0 0 0 2px var(--green-btn), var(--shadow); background: #fffdf3; }
+.bot-strength { display: inline-flex; gap: 3px; }
+.bot-strength i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--wood-2); }
+.bot-strength i.on { background: var(--wood-2); }
+.bot-start { align-items: center; text-align: center; font-size: 1.15rem; }
+@media (max-width: 620px) {
+  .bot-levels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bot-level .bug-icon { width: 44px; height: 44px; }
+}
 
 /* Tip jar: a wooden sign by the fire. */
 .tip-jar {
