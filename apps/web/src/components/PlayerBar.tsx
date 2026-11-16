@@ -1,6 +1,6 @@
 import type { Color } from 'chessops';
 import { type GameState, SHOP_ROLES, coinsAt, elapsed, pockets } from '@bugshop/rules';
-import type { SeatStatus } from '@bugshop/protocol';
+import type { RatingChange, SeatStatus } from '@bugshop/protocol';
 import { formatClock } from '../game/view';
 import { BackpackIcon, SeedIcon } from './icons';
 import { PieceIcon } from './PieceIcon';
@@ -14,6 +14,9 @@ export function PlayerBar(props: {
   /** Whether this screen may see the player's seeds and pocket. */
   revealed: boolean;
   seat?: SeatStatus;
+  /** Online games: the player's Elo rating, and how this game changed it once it is over. */
+  rating?: number;
+  ratingChange?: RatingChange;
   /** Show a compact view of their pocket in the bar (when their full backpack isn't shown). */
   showPocket?: boolean;
 }) {
@@ -29,6 +32,7 @@ export function PlayerBar(props: {
     <div className={`player-bar ${toMove ? 'to-move' : ''}`} aria-label={props.label}>
       <span className={`player-dot ${color}`} aria-hidden="true" />
       <span className="player-name">{props.label}</span>
+      {props.rating !== undefined && <Rating rating={props.rating} change={props.ratingChange} />}
       {props.seat && props.seat !== 'connected' && (
         <span className="presence">{props.seat === 'away' ? 'Away' : 'Not here yet'}</span>
       )}
@@ -71,6 +75,20 @@ function MiniPocket({ counts, color }: { counts: Record<(typeof SHOP_ROLES)[numb
           {counts[r] > 1 && <sub>{counts[r]}</sub>}
         </span>
       ))}
+    </span>
+  );
+}
+
+function Rating({ rating, change }: { rating: number; change?: RatingChange }) {
+  if (!change) return <span className="rating" aria-label={`Rating ${rating}`}>{rating}</span>;
+  const delta = change.after - change.before;
+  return (
+    <span className="rating" aria-label={`Rating ${change.after}, ${delta >= 0 ? 'up' : 'down'} ${Math.abs(delta)}`}>
+      {change.after}
+      <span className={`rating-delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}`}>
+        {delta > 0 ? '+' : delta < 0 ? '−' : '±'}
+        {Math.abs(delta)}
+      </span>
     </span>
   );
 }

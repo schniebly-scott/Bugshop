@@ -7,7 +7,7 @@ pnpm monorepo (`pnpm-workspace.yaml`):
 - `packages/rules`: shared, pure TypeScript rules engine (built on chessops). There is no I/O; every function takes `now` explicitly. Client and server must both use it, so never re-implement rules elsewhere.
 - `apps/web`: React + Vite SPA (chessground board). Hotseat and bot modes run fully client-side.
 - `packages/protocol`: client/server message names and payload types (types and constants only).
-- `apps/server`: Node + Colyseus 0.18, the authoritative game server. Node 24 runs the `.ts` sources directly (type stripping), so code must stay "erasable" (no enums, namespaces or constructor parameter properties; `erasableSyntaxOnly` enforces this) and relative imports use `.ts` extensions.
+- `apps/server`: Node + Colyseus 0.18, the authoritative game server. Also hosts accounts (Better Auth at `/api/auth/*`), Elo ratings and the SQLite database (`node:sqlite`). Node 24 runs the `.ts` sources directly (type stripping), so code must stay "erasable" (no enums, namespaces or constructor parameter properties; `erasableSyntaxOnly` enforces this) and relative imports use `.ts` extensions.
 - `deploy/`: Docker Compose + Caddy for the VPS.
 
 ## Commands
@@ -27,11 +27,18 @@ pnpm monorepo (`pnpm-workspace.yaml`):
 - Keep the strict CSP and security headers in `apps/web/vercel.json`. If you add an external origin (API, websocket, fonts), add it to `connect-src`/etc. explicitly, never `*` or `unsafe-eval`.
 - The only inline-style allowance is one `'unsafe-hashes'` hash in `style-src`, for chessground's `style="color-scheme:light only"` on its SVG layers (`wrap.js`). If a chessground upgrade changes that string, update the hash; never fall back to `'unsafe-inline'`. `vite preview` serves the same headers (read from `vercel.json`), so check the browser console there for CSP violations.
 - chessground writes `drawable` custom SVG shapes and shape labels via `innerHTML`. Never pass user-controlled content into them.
-- Page analytics (`@vercel/analytics`, production builds only) are same-origin (`/_vercel/insights/*`), so the CSP needs no extra origin. Every event goes through `redactGameUrl()` (`apps/web/src/support.ts`) so private room IDs never reach analytics. Keep that `beforeSend`, and don't add custom events that carry room IDs, names or game state.
+- Page analytics (`@vercel/analytics`, production builds only) are same-origin (`/_vercel/insights/*`), so the CSP needs no extra origin. Every event goes through `redactUrl()` (`apps/web/src/support.ts`) so private room IDs and the password-reset token never reach analytics. Keep that `beforeSend`, and don't add custom events that carry room IDs, names or game state.
 - The donation link comes from `VITE_DONATE_URL` and is only used if `parseDonateUrl()` accepts it (https only).
+- The session is an httpOnly cookie. Never put a session token, password or reset token in localStorage, sessionStorage, the URL (beyond the one-time reset link, which is stripped on load) or logs. `AccountGate` is only a convenience: real enforcement is on the server.
+- Replies from the account API are parsed field by field (`account/api.ts`). Player names are text only and must match `HANDLE_PATTERN`.
 - No secrets in the frontend. Anything in `VITE_*` env vars is public.
 
 **Backend**
+- **Accounts:** playing requires a signed-in account with a player name. `BugshopRoom.onAuth` enforces it for every matchmaking request from the session cookie, so never add a way into a game room that skips it. Opponents may learn a player's name and rating only: never send or log emails, user IDs or provider profile data to other players.
+- Better Auth's origin and CSRF checks are forced on in every environment (`auth.ts`); keep `trustedOrigins` equal to `ALLOWED_ORIGINS`. Our own cookie-authenticated POST routes (`http.ts`) and matchmaking check the `Origin` too. Any new state-changing route must do the same.
+- Production refuses to start without `AUTH_SECRET`, `PUBLIC_URL` and a mail provider (`env.ts`). Don't weaken that: without mail, anyone could register someone else's address.
+- Ratings change only in `PlayerStore.recordGame`, once per game, from the server's own game state.
+- Never log mail bodies, verification or reset links, session cookies, or passwords.
 - Every client message gets a strict zod schema (`apps/server/src/schemas.ts`, `z.strictObject`, bounded strings) registered with Colyseus `validate()`. An invalid message disconnects the client. Never add a handler without a schema.
 - Game time comes only from `serverNow()` (`src/serverClock.ts`). Its test offset must stay test-only.
 - Existing limits (keep or tighten them): 4 KB message cap, `maxMessagesPerSecond`, per-IP matchmaking limit in static `onAuth` (shared by the lobby list room), `MAX_ROOMS`, and room lifetime timers.
@@ -41,7 +48,7 @@ pnpm monorepo (`pnpm-workspace.yaml`):
 - CORS and the WebSocket origin check allow only `ALLOWED_ORIGINS`. Colyseus' defaults allow any origin, and `app.ts` overrides them, so keep that override.
 - Colyseus takes the client IP from `X-Real-IP`/`X-Forwarded-For` without checking. That's only safe because Caddy overwrites those headers and the server port is never published (`deploy/docker-compose.yml`). Keep it that way.
 - Secrets only from env vars, never commit `.env` files (gitignored). The container runs as non-root on a read-only filesystem with all capabilities dropped.
-- When a database is added: parameterized queries only (Drizzle).
+- SQL: prepared statements with bound parameters only (`db.ts`). Never build SQL from strings that contain user input. The database file lives on the `/data` volume, the container's only writable path.
 
 **Dependencies / supply chain**
 - Prefer few, well-maintained dependencies. Justify each new one.

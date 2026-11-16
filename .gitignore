@@ -6,3 +6,9 @@ coverage/
 .env.*
 .DS_Store
 !.env.example
+
+# Local SQLite database (accounts, ratings)
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

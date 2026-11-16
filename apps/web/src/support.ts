@@ -16,15 +16,16 @@ export const parseDonateUrl = (raw: string | undefined): string | undefined => {
 };
 
 /**
- * Private room IDs are the invite secret, so they must not reach analytics.
- * Every game page is reported as `/g/[room]`.
+ * What analytics may know about the page being viewed: its path, nothing more.
+ * - Private room IDs are the invite secret, so every game page is `/g/[room]`.
+ * - Query strings and fragments are dropped: the password-reset link carries its
+ *   one-time token there.
  */
-export const redactGameUrl = (href: string): string => {
+export const redactUrl = (href: string): string => {
   try {
     const url = new URL(href);
-    if (!url.pathname.startsWith('/g/')) return href;
-    return `${url.origin}/g/[room]`;
+    return url.pathname.startsWith('/g/') ? `${url.origin}/g/[room]` : `${url.origin}${url.pathname}`;
   } catch {
-    return href;
+    return '';
   }
 };

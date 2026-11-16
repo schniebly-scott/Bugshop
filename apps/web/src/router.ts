@@ -1,6 +1,6 @@
 import { useSyncExternalStore, type MouseEvent } from 'react';
 
-/** Minimal client-side router on the History API (no dependency needed for 3 routes). */
+/** Minimal client-side router on the History API (no dependency needed for a handful of routes). */
 
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach(l => l());
@@ -25,7 +25,12 @@ export const linkTo = (path: string) => (e: MouseEvent) => {
   navigate(path);
 };
 
-export type Route = { page: 'home' } | { page: 'hotseat' } | { page: 'game'; roomId: string } | { page: 'not-found' };
+export type Route =
+  | { page: 'home' }
+  | { page: 'hotseat' }
+  | { page: 'reset-password' }
+  | { page: 'game'; roomId: string }
+  | { page: 'not-found' };
 
 /** Room IDs come from the URL, so they are untrusted: accept only the server's ID alphabet. */
 export const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{4,32}$/;
@@ -33,6 +38,7 @@ export const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{4,32}$/;
 export const parseRoute = (path: string): Route => {
   if (path === '/' || path === '') return { page: 'home' };
   if (path === '/hotseat') return { page: 'hotseat' };
+  if (path === '/reset-password') return { page: 'reset-password' };
   const m = /^\/g\/([^/]+)$/.exec(path);
   if (m && ROOM_ID_PATTERN.test(m[1]!)) return { page: 'game', roomId: m[1]! };
   return { page: 'not-found' };

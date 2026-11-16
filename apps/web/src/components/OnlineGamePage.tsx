@@ -6,6 +6,7 @@ import { navigate } from '../router';
 import { useNow } from '../game/useNow';
 import { colorName, errorText } from '../game/view';
 import { SeedIcon, ShoeIcon } from './icons';
+import { accountStore } from '../account/store';
 import { GameView } from './GameView';
 import { ConfirmButton } from './ConfirmButton';
 
@@ -14,6 +15,12 @@ export function OnlineGamePage({ roomId }: { roomId: string }) {
   const view = useSyncExternalStore(session.subscribe, session.getView);
   const live = view.status === 'playing' || view.status === 'reconnecting';
   const now = useNow(live) + view.offsetMs;
+
+  // A rated game just ended: fetch the new rating for the header.
+  const rated = !!view.snapshot?.ratings;
+  useEffect(() => {
+    if (rated) void accountStore.refresh();
+  }, [rated]);
 
   useEffect(() => {
     if (!view.rejection) return;
@@ -47,8 +54,16 @@ export function OnlineGamePage({ roomId }: { roomId: string }) {
   }
 
   const me = view.color;
-  const label = (c: Color) => (c === me ? `You (${colorName(c)})` : `Opponent (${colorName(c)})`);
+  const players = view.snapshot?.players;
+  const ratings = view.snapshot?.ratings;
+  const label = (c: Color) => players?.[c]?.name ?? (c === me ? `You (${colorName(c)})` : `Opponent (${colorName(c)})`);
   const playing = view.game.status === 'playing';
+  const mine = ratings?.[me];
+  const resultNote = playing
+    ? undefined
+    : mine
+      ? `Your rating: ${mine.before} → ${mine.after}`
+      : 'Not rated: the game ended before both players had moved.';
 
   return (
     <GameView
@@ -67,6 +82,9 @@ export function OnlineGamePage({ roomId }: { roomId: string }) {
       }
       label={label}
       seats={view.snapshot?.seats}
+      players={players}
+      ratings={ratings}
+      resultNote={resultNote}
     >
       {playing ? (
         <ConfirmButton onConfirm={() => session.leave().then(() => navigate('/'))} confirmLabel="Leaving resigns. Leave?">

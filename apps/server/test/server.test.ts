@@ -17,17 +17,22 @@ import { createGameServer } from '../src/app.ts';
 import { BugshopRoom } from '../src/BugshopRoom.ts';
 import { loadEnv } from '../src/env.ts';
 import { advanceServerClockForTests } from '../src/serverClock.ts';
+import { type TestAccount, clientFor, createAccount } from './helpers.ts';
 
 const PORT = 31000 + Math.floor(Math.random() * 2000);
 const ENDPOINT = `http://127.0.0.1:${PORT}`;
 const MIN = 60_000;
 let server: ReturnType<typeof createGameServer>;
 
+let accounts: TestAccount[] = [];
+let nextAccount = 0;
+
 beforeAll(async () => {
   server = createGameServer(
-    loadEnv({ NODE_ENV: 'test', ALLOWED_ORIGINS: 'http://localhost:5173', MATCHMAKE_PER_MINUTE: '1000' }),
+    loadEnv({ NODE_ENV: 'test', ALLOWED_ORIGINS: 'http://localhost:5173', MATCHMAKE_PER_MINUTE: '1000', DATABASE_PATH: ':memory:' }),
   );
   await server.listen(PORT, '127.0.0.1');
+  accounts = await Promise.all(['Ant', 'Bee', 'Cricket', 'Dragonfly', 'Earwig', 'Firefly'].map(h => createAccount(ENDPOINT, h)));
 });
 afterAll(async () => {
   await server.gracefullyShutdown(false);
@@ -68,7 +73,10 @@ const track = (room: Room): Player => {
   };
 };
 
-const newClient = () => new Client(ENDPOINT);
+/** A client signed in as the next test account in turn, so consecutive clients are different players. */
+const newClient = () => clientFor(ENDPOINT, accounts[nextAccount++ % accounts.length]);
+/** A visitor who is not signed in. */
+const guestClient = () => new Client(ENDPOINT);
 /** Full create options, as the web client sends them. */
 const opts = (mode: GameMode, settings: Partial<GameSettings> = {}) => ({ mode, ...DEFAULT_SETTINGS, ...settings });
 
@@ -113,7 +121,7 @@ describe('private invite rooms', () => {
 
 /** A visitor watching the live lobby list. */
 const watchLobbies = async () => {
-  const room = await newClient().joinOrCreate(LOBBY_LIST_ROOM_NAME);
+  const room = await guestClient().joinOrCreate(LOBBY_LIST_ROOM_NAME);
   room.reconnection.enabled = false;
   let list: LobbyListing[] | undefined;
   room.onMessage(Msg.lobbies, (l: LobbyListing[]) => (list = l));
@@ -136,7 +144,8 @@ describe('lobby list', () => {
     const list = await watcher.waitFor(l => listed(l, pub.room.roomId), 'public lobby listed');
     const entry = list.find(x => x.roomId === pub.room.roomId)!;
     expect(entry.settings).toEqual({ secondsPerCoin: 25, squishPrice: 20 });
-    expect(Object.keys(entry).sort()).toEqual(['createdAt', 'roomId', 'settings']); // nothing internal leaks
+    expect(Object.keys(entry).sort()).toEqual(['createdAt', 'host', 'roomId', 'settings']);
+    expect(Object.keys(entry.host).sort()).toEqual(['name', 'rating']); // nothing internal leaks
     expect(listed(list, priv.room.roomId)).toBe(false);
 
     // Someone joins from the list: the game starts and the lobby disappears.

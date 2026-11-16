@@ -241,6 +241,7 @@ button:active:not(:disabled) { transform: translateY(1px); }
 button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
 button:disabled { cursor: not-allowed; color: var(--ink-soft); background: var(--parchment-2); border-style: dashed; }
 button.primary, .button.primary, .primary { color: #fff; background: var(--green-btn); border-color: var(--green-btn-edge); }
+button.primary:disabled { color: var(--ink-soft); background: var(--parchment-2); border-color: var(--parchment-edge); }
 button.armed { color: #fff; background: var(--danger); border-color: #7c2c1c; border-style: solid; }
 
 .error { color: var(--danger); font-weight: 600; }
@@ -287,6 +288,83 @@ button.armed { color: #fff; background: var(--danger); border-color: #7c2c1c; bo
 }
 .home-link:hover { background: var(--parchment-0); }
 
+/* ---------- account: header chip, sign-in card ---------- */
+.header-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.account-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 6px 4px 12px;
+  color: var(--ink);
+  background: var(--parchment-1);
+  border: 1.5px solid var(--parchment-edge);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+.account-name { font: 700 0.98rem var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  font: 700 0.82rem/1.5 var(--sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--wood-ink);
+  background: var(--wood-2);
+  border-radius: 999px;
+  flex: none;
+}
+.player-bar .rating { background: rgba(0, 0, 0, 0.3); }
+.rating-delta { font-weight: 800; }
+.rating-delta.up { color: #b9ec8f; }
+.rating-delta.down { color: #ffb4a0; }
+button.link {
+  min-height: 0;
+  white-space: nowrap;
+  padding: 4px 8px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  box-shadow: none;
+}
+button.link:hover:not(:disabled) { box-shadow: none; filter: none; background: rgba(110, 75, 30, 0.14); }
+button.link:disabled { background: none; text-decoration: none; }
+
+.account-form { display: grid; gap: 12px; width: 100%; max-width: 360px; text-align: left; }
+.account-form label { display: grid; gap: 4px; font-weight: 600; }
+.account-form input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 11px;
+  /* 16px keeps iOS from zooming the page when the field is focused. */
+  font: 400 16px var(--sans);
+  color: var(--ink);
+  background: var(--parchment-0);
+  border: 1.5px solid var(--parchment-edge);
+  border-radius: 9px;
+}
+.account-form small { font-weight: 400; font-size: 0.85rem; color: var(--ink-soft); }
+.account-form .error { margin: 0; }
+.account-form button { min-height: 44px; font-size: 1rem; }
+.social-buttons { display: grid; gap: 8px; width: 100%; max-width: 360px; }
+.social { min-height: 44px; gap: 10px; font-size: 1rem; }
+.social.google { color: #1f1f1f; background: #fff; border-color: #747775; }
+.social.apple { color: #fff; background: #000; border-color: #000; }
+.provider-icon { width: 18px; height: 18px; }
+.or-divider { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 360px; font-size: 0.88rem; color: var(--ink-soft); }
+.or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1.5px; background: rgba(110, 75, 30, 0.35); }
+.account-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; }
+.account-links a { padding: 4px 8px; font-weight: 600; color: var(--ink); }
+.mailed-to { font-weight: 700; overflow-wrap: anywhere; }
+.sign-in-panel { display: grid; justify-items: center; gap: 12px; text-align: center; }
+.sign-in-panel h2 { margin: 0; font: 700 1.5rem var(--serif); color: var(--wood-3); }
+.sign-in-panel p { margin: 0; }
+
 /* ---------- game layout ---------- */
 .game-layout {
   display: flex;
@@ -306,7 +384,7 @@ button.armed { color: #fff; background: var(--danger); border-color: #7c2c1c; bo
   gap: 8px;
 }
 /* Game over: the board gives up a little height so the result fits on screen. */
-.board-column:has(.result) { flex-basis: calc(100dvh - 270px); }
+.board-column:has(.result) { flex-basis: calc(100dvh - 292px); }
 .side-column { flex: 0 0 380px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 /* ---------- board: carved wooden frame, coordinates on the wood ---------- */
 .board-area { position: relative; }
@@ -365,6 +443,7 @@ cg-board square.check {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 .result-line:empty { display: none; }
+.result small { display: block; margin-top: 2px; font: 600 0.88rem var(--sans); }
 .result {
   display: block;
   padding: 10px 14px;
@@ -755,6 +834,7 @@ a.big-button:hover { box-shadow: 0 2px 6px rgba(58, 44, 24, 0.3); }
   background: radial-gradient(circle at 35% 35%, #e98a6d, #a3402b);
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.4);
 }
+.lobby-host { flex-basis: 100%; display: flex; align-items: center; gap: 8px; font: 700 1.05rem var(--serif); }
 .lobby-rules { display: grid; gap: 2px; font-weight: 700; }
 .lobby-rules span { display: inline-flex; align-items: center; gap: 7px; }
 .lobby-rules .seed-icon { width: 1.6em; }
@@ -824,12 +904,15 @@ html { overscroll-behavior-y: none; }
   .site-header h1 { font-size: 1.1rem; }
   .site-header h1 a { gap: 7px; padding: 4px 11px 4px 6px; border-radius: 8px; }
   .logo { width: 22px; height: 22px; }
-  .home-link { padding: 4px 11px; font-size: 0.85rem; }
+  .home-link { padding: 4px 11px; font-size: 0.85rem; white-space: nowrap; }
+  .account-chip { padding: 2px 4px 2px 10px; gap: 5px; }
+  .account-chip .link { padding: 3px 6px; font-size: 0.82rem; }
+  .account-name { font-size: 0.88rem; max-width: 22vw; }
 
   /* Landscape by default: board on the left, strips on the right. */
   .game-layout { gap: 8px; padding: 4px 8px 12px; }
   .board-column { flex: 0 1 calc(100dvh - 136px); min-width: 0; gap: 6px; }
-  .board-column:has(.result) { flex-basis: calc(100dvh - 182px); }
+  .board-column:has(.result) { flex-basis: calc(100dvh - 204px); }
   .side-column { flex: 1 1 0; max-width: 440px; gap: 6px; }
 
   .player-bar { min-height: 38px; gap: 7px; padding: 4px 6px 4px 9px; border-radius: 8px; }
@@ -942,8 +1025,14 @@ html { overscroll-behavior-y: none; }
 @media (max-width: 899px) and (orientation: portrait) {
   .game-layout { flex-direction: column; align-items: center; gap: 6px; }
   .board-column { flex: none; width: clamp(min(100%, 280px), calc(100dvh - 298px), 100%); }
-  .board-column:has(.result) { flex: none; width: clamp(min(100%, 280px), calc(100dvh - 344px), 100%); }
+  .board-column:has(.result) { flex: none; width: clamp(min(100%, 280px), calc(100dvh - 366px), 100%); }
   .side-column { flex: none; width: min(100%, 520px); max-width: none; }
+}
+
+/* Narrow phones: the logo already leads home, so the header keeps only the account. */
+@media (max-width: 520px) {
+  .header-right .home-link { display: none; }
+  .account-name { max-width: 34vw; }
 }
 
 /* Home on a phone: the start panel comes first, the explainer after it. */
