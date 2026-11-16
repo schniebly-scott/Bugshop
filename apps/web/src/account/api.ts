@@ -23,7 +23,16 @@ export type AccountError =
   | 'name-taken'
   | 'link-expired'
   | 'slow-down'
+  | 'wrong-password'
+  | 'reauth-required'
   | 'unknown';
+
+/** How an account can sign in. */
+export interface SignInMethods {
+  password: boolean;
+  google: boolean;
+  apple: boolean;
+}
 
 export type Result<T = void> = { ok: true; value: T } | { ok: false; error: AccountError };
 
@@ -140,6 +149,38 @@ export const api = {
     return fail('unknown');
   },
 
+  /** Which sign-in methods the signed-in account has (decides whether deleting asks for a password). */
+  async signInMethods(): Promise<Result<SignInMethods>> {
+    const res = await call(`${ApiPath.auth}/list-accounts`);
+    if (!res) return fail('network');
+    if (!res.ok) return fail(res.status === 401 ? 'reauth-required' : 'unknown');
+    let data: unknown;
+    try {
+      data = await res.json();
+    } catch {
+      return fail('unknown');
+    }
+    const ids = Array.isArray(data)
+      ? data.map(a => (a && typeof a === 'object' ? (a as Record<string, unknown>).providerId : undefined))
+      : [];
+    return ok({ password: ids.includes('credential'), google: ids.includes('google'), apple: ids.includes('apple') });
+  },
+
+  /**
+   * Permanently delete the signed-in account. Accounts with a password must give
+   * it; others need a recent sign-in (the server answers `reauth-required` if not).
+   */
+  async deleteAccount(password?: string): Promise<Result> {
+    const res = await call(`${ApiPath.auth}/delete-user`, password ? { password } : {});
+    if (!res) return fail('network');
+    if (res.ok) return ok(undefined);
+    if (res.status === 429) return fail('slow-down');
+    const code = String((await readJson(res)).code ?? '');
+    if (code === 'INVALID_PASSWORD') return fail('wrong-password');
+    if (code === 'SESSION_EXPIRED' || res.status === 401) return fail('reauth-required');
+    return fail('unknown');
+  },
+
   async chooseName(handle: string): Promise<Result<AccountInfo>> {
     if (!HANDLE_PATTERN.test(handle)) return fail('invalid-name');
     const res = await call(ApiPath.profile, { handle });
@@ -165,5 +206,7 @@ export const ACCOUNT_ERROR_TEXT: Record<AccountError, string> = {
   'name-taken': 'Someone already has that name. Try another.',
   'link-expired': 'This link has expired or was already used. Ask for a new one.',
   'slow-down': 'Too many attempts. Wait a minute and try again.',
+  'wrong-password': "That password isn't right.",
+  'reauth-required': 'For your safety, sign in again first (sign out, then back in), then delete your account.',
   unknown: 'Something went wrong. Try again.',
 };

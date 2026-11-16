@@ -55,6 +55,10 @@ export const accountStore = {
   setAccount(account: AccountInfo) {
     set(fromAccount(account));
   },
+  /** The account was deleted on the server: forget it here too. */
+  deleted() {
+    set({ status: 'guest' });
+  },
   async signOut() {
     await api.signOut();
     set({ status: 'guest' });

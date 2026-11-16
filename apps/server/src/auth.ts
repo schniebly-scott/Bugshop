@@ -10,7 +10,13 @@ import type { Mailer } from './mail.ts';
  * sign-in when their credentials are configured. Sessions are httpOnly cookies,
  * so page scripts never see a token.
  */
-export const createAuth = (env: Env, db: DatabaseSync, mailer: Mailer | undefined) => {
+export const createAuth = (
+  env: Env,
+  db: DatabaseSync,
+  mailer: Mailer | undefined,
+  /** Removes the account's own Bugshop data; runs before the account itself is deleted. */
+  onDeleteAccount: (userId: string) => void = () => {},
+) => {
   const baseURL = env.PUBLIC_URL ?? `http://localhost:${env.PORT}`;
   const send = (to: string, subject: string, lines: string[]) => {
     const text = [...lines, '', "If this wasn't you, ignore this email and nothing changes.", '', 'Bugshop'].join('\n');
@@ -64,6 +70,16 @@ export const createAuth = (env: Env, db: DatabaseSync, mailer: Mailer | undefine
       ...(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET
         ? { apple: { clientId: env.APPLE_CLIENT_ID, clientSecret: env.APPLE_CLIENT_SECRET } }
         : {}),
+    },
+    user: {
+      // "Delete my account" (POST /api/auth/delete-user). The caller must prove it's
+      // them: the account password, or a sign-in less than a day old (Google/Apple
+      // accounts, which have no password). Sessions and linked sign-ins are removed
+      // by the library; the player profile and game links are removed here first.
+      deleteUser: {
+        enabled: true,
+        beforeDelete: async (user: { id: string }) => onDeleteAccount(user.id),
+      },
     },
     account: {
       // Google and Apple confirm the address themselves, so signing in with

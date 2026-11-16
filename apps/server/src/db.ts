@@ -57,6 +57,9 @@ export interface PlayerRow extends PlayerRecord {
 
 export type HandleResult = { ok: true; player: PlayerRow } | { ok: false; error: 'taken' | 'already-set' };
 
+/** Stands in for a deleted account in old game results. */
+export const DELETED_PLAYER = 'deleted';
+
 /** Handles are unique ignoring case, so "Beetle" and "beetle" can't both exist. */
 const handleKey = (handle: string) => handle.toLowerCase();
 
@@ -67,6 +70,9 @@ export class PlayerStore {
   private readonly insert;
   private readonly update;
   private readonly insertResult;
+  private readonly deletePlayer;
+  private readonly unlinkWhite;
+  private readonly unlinkBlack;
 
   constructor(db: DatabaseSync) {
     this.db = db;
@@ -83,6 +89,27 @@ export class PlayerStore {
       `INSERT INTO game_result (white_id, black_id, winner, status, mode, white_before, white_after, black_before, black_after, finished_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    this.deletePlayer = db.prepare('DELETE FROM player WHERE user_id = ?');
+    this.unlinkWhite = db.prepare(`UPDATE game_result SET white_id = '${DELETED_PLAYER}' WHERE white_id = ?`);
+    this.unlinkBlack = db.prepare(`UPDATE game_result SET black_id = '${DELETED_PLAYER}' WHERE black_id = ?`);
+  }
+
+  /**
+   * Remove an account's Bugshop data when the account is deleted: the player
+   * profile goes, and its finished games stay in opponents' histories but no
+   * longer point at the account. Atomic: all of it or none of it.
+   */
+  deleteAccountData(userId: string): void {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      this.deletePlayer.run(userId);
+      this.unlinkWhite.run(userId);
+      this.unlinkBlack.run(userId);
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
   }
 
   get(userId: string): PlayerRow | undefined {
