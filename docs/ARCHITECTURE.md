@@ -85,7 +85,7 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 1. ~~`packages/rules` with Vitest tests~~ (done) (drops incl. no pawns on 1st/8th rank, no captures-to-pocket, coin accrual, buying off-turn, Squish, mate/stalemate).
 2. ~~`apps/web` hotseat mode: board, pocket, shop panel and count-up clocks, fully offline.~~ (done)
 3. ~~`apps/server` Colyseus room plus private invite links and public lobbies.~~ (done, see "Online play")
-4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS (files ready in `deploy/`, see `deploy/README.md`). Still to do: GitHub Actions auto-deploy.
+4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS (files ready in `deploy/`, see `deploy/README.md`). Auto-deploy after CI via GitHub Actions with a forced-command SSH key (done).
 5. Vs-bot via Fairy-Stockfish WASM, plus the shop heuristic.
 6. Later: accounts (Better Auth), Glicko-2 ratings (`glicko2` npm), game replays.
 

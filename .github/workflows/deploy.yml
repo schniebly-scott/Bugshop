@@ -1,0 +1,52 @@
+name: Deploy server
+
+# Deploys the game server to the VPS after CI passes on main.
+# Can also be started by hand from the Actions tab ("Run workflow").
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# The job needs no GitHub token permissions: it only SSHes to the VPS.
+permissions: {}
+
+# Never run two deploys at once; queue instead of cancelling a deploy halfway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Only deploy CI runs that passed, for pushes to main in this repository
+    # (never pull requests or forks).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The SSH key is an environment secret; the environment only allows main.
+    environment:
+      name: production
+      url: https://api.bugshopchess.com
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ vars.DEPLOY_HOST }}
+          # The exact commit that passed CI (or the dispatched commit).
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Pinned host key: refuse to connect if the server's identity ever changes.
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The key is locked to /usr/local/bin/bugshop-deploy on the server;
+          # the "command" sent here is just the commit SHA to deploy.
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+              -o BatchMode=yes -o ConnectTimeout=20 "root@$HOST" "$SHA"
