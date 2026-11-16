@@ -51,10 +51,24 @@ export interface CreateOptions extends GameSettings {
 
 export type JoinOptions = CreateOptions | Record<string, never>;
 
+/** What everyone may know about a player: their chosen name and Elo rating. */
+export interface PlayerInfo {
+  name: string;
+  rating: number;
+}
+
+/** A player's rating before and after one rated game. */
+export interface RatingChange {
+  before: number;
+  after: number;
+}
+
 /** One open public lobby, as shown in the lobby list. */
 export interface LobbyListing {
   roomId: string;
   settings: GameSettings;
+  /** Who opened it. */
+  host: PlayerInfo;
   /** When the lobby was opened (ms since epoch). */
   createdAt: number;
 }
@@ -86,6 +100,13 @@ export interface Snapshot {
   /** `null` until both players have joined. */
   game: GameState | null;
   seats: ByColor<SeatStatus>;
+  /** Who sits where (`null` while a seat is empty). Ratings are as of joining. */
+  players: ByColor<PlayerInfo | null>;
+  /**
+   * Set once a rated game has ended. A finished game without it was not rated
+   * (it ended before both players had moved).
+   */
+  ratings: ByColor<RatingChange> | null;
   /** Server time when the snapshot was sent (ms since epoch). */
   serverNow: number;
 }
@@ -102,3 +123,48 @@ export const Limits = {
   /** Seconds a dropped player has to reconnect before their seat is given up. */
   reconnectSeconds: 600,
 } as const;
+
+// ---------- accounts (HTTP API on the game server) ----------
+
+/** HTTP paths on the game server. Everything under `auth` is Better Auth's API. */
+export const ApiPath = {
+  auth: '/api/auth',
+  /** GET: the signed-in account ({@link AccountInfo}), or 401. */
+  me: '/api/me',
+  /** POST {@link ProfileRequest}: choose the player name (once). */
+  profile: '/api/profile',
+  /** GET: which sign-in methods are switched on ({@link AuthProviders}). */
+  providers: '/api/providers',
+} as const;
+
+/** Player names: 3-16 letters, digits, `_` or `-`, starting with a letter. Unique ignoring case. */
+export const HANDLE_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{2,15}$/;
+
+/** Shortest password the server accepts. */
+export const MIN_PASSWORD_LENGTH = 10;
+
+export interface PlayerRecord extends PlayerInfo {
+  games: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
+export interface AccountInfo {
+  email: string;
+  /** `null` until the account has chosen a player name; it can't play before that. */
+  player: PlayerRecord | null;
+}
+
+export interface ProfileRequest {
+  handle: string;
+}
+
+export type ProfileError = 'invalid' | 'taken' | 'already-set';
+
+export interface AuthProviders {
+  google: boolean;
+  apple: boolean;
+  /** Whether new email accounts must confirm their address before signing in. */
+  emailVerification: boolean;
+}

@@ -1,6 +1,6 @@
 import { type AuthContext, type Client, Room, ServerError, matchMaker, subscribeLobby } from '@colyseus/core';
-import { type GameSettings, type LobbyListing, Msg, ROOM_NAME } from '@bugshop/protocol';
-import { BugshopRoom } from './BugshopRoom.ts';
+import { type LobbyListing, Msg, ROOM_NAME } from '@bugshop/protocol';
+import { type LobbyMetadata, BugshopRoom } from './BugshopRoom.ts';
 
 /**
  * Live list of open public lobbies. Visitors only receive data; they cannot
@@ -14,9 +14,10 @@ export class LobbyListRoom extends Room {
   private unsubscribe: (() => void) | undefined;
   private pending: ReturnType<typeof setTimeout> | undefined;
 
-  static async onAuth(token: string, options: unknown, context: AuthContext) {
-    // Same per-IP matchmaking limit as games; no options accepted.
-    await BugshopRoom.onAuth(token, {}, context);
+  static async onAuth(_token: string, options: unknown, context: AuthContext) {
+    // Same per-IP limit and origin check as games, but no sign-in: anyone may
+    // look at the noticeboard. No options accepted.
+    BugshopRoom.checkRequest(context);
     if (options && typeof options === 'object' && Object.keys(options).length > 0) {
       throw new ServerError(400, 'Invalid options.');
     }
@@ -50,12 +51,13 @@ export class LobbyListRoom extends Room {
   private async listOpenLobbies(): Promise<LobbyListing[]> {
     const rooms = await matchMaker.query({ name: ROOM_NAME, private: false, locked: false });
     return rooms
-      .filter(r => r.clients > 0 && r.clients < r.maxClients && r.metadata)
+      .filter(r => r.clients > 0 && r.clients < r.maxClients && (r.metadata as LobbyMetadata | undefined)?.host)
       .map(r => {
-        const m = r.metadata as GameSettings;
+        const m = r.metadata as LobbyMetadata;
         return {
           roomId: r.roomId,
           settings: { secondsPerCoin: m.secondsPerCoin, squishPrice: m.squishPrice },
+          host: { name: m.host.name, rating: m.host.rating },
           createdAt: r.createdAt ? new Date(r.createdAt).getTime() : Date.now(),
         };
       })

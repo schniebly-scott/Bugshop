@@ -6,7 +6,7 @@ _Planning doc, 2026-11-09_
 ## Context
 Bugshop is a chess variant: normal pieces, captures and checkmate, plus a **shop**. The **time your opponent spends converts into coins for you** (default 1 coin per minute, configurable). You spend coins on pieces that go into your **pocket**, and you **drop** them onto the board the way you do in bughouse/crazyhouse. Clocks **count up**.
 
-The repo is empty (only `README.md`). Launch scope: public matchmaking, private invite links, local hotseat and vs-bot, with anonymous play (no accounts yet). Goals: reuse existing libraries as much as possible and keep hosting cheap.
+The repo is empty (only `README.md`). Launch scope: public matchmaking, private invite links, local hotseat and vs-bot. Players sign in to play (see "Accounts and ratings"). Goals: reuse existing libraries as much as possible and keep hosting cheap.
 
 ## Key insight
 In engine terms, Bugshop is **Crazyhouse in which captured pieces do not go to the pocket, and the pocket is filled by buying instead**. Mature open-source tools already handle drops, so the only custom logic is the shop, the coins and the count-up clock.
@@ -28,7 +28,7 @@ In engine terms, Bugshop is **Crazyhouse in which captured pieces do not go to t
  │  • lobby list + private rooms (by ID)        │
  │  • server-authoritative moves, clock, coins  │
  │  • reconnection handling                     │
- │ SQLite (better-sqlite3 + Drizzle): game log  │
+ │ SQLite (node:sqlite): accounts, ratings      │
  └──────────────────────────────────────────────┘
 ```
 
@@ -41,6 +41,17 @@ In engine terms, Bugshop is **Crazyhouse in which captured pieces do not go to t
 - `theme.css` holds all colors as CSS variables, with a light (day forest) and dark (night forest) variant. Each surface has its own ink (`--text` on the sky, `--ink` on paper, `--wood-ink` on wood); paper and wood look the same in both themes, so text on them never changes color.
 - On phones, small tablets and short windows (`max-width: 899px` or `max-height: 560px`) the play loop fits on one screen without scrolling: clocks, board, then the backpack and market flattened into two strips. Draw, resign and page controls sit below. The same markup is restyled in CSS, so there is no separate mobile component tree. Portrait stacks everything; landscape puts the strips beside the board.
 - Keep visible text short and concrete. Say what a number means ("1 seed per 60s"), and put secondary detail in `title`/`aria-label` rather than on screen.
+
+### Accounts and ratings
+Nobody plays without an account: not online, and not pass-and-play either.
+
+- **Sign-in** is handled by [Better Auth](https://better-auth.com) inside the game server, mounted at `/api/auth/*` on Colyseus' own HTTP router (no Express). Methods: email + password (address confirmed by a mailed link, passwords reset the same way), Google, and Apple. The Google and Apple buttons only exist when their credentials are configured.
+- **Session**: an httpOnly, SameSite=Lax cookie on the API domain. The web app never sees a token; it sends the cookie with `credentials: 'include'`. This is why the API must be a subdomain of the web app's domain.
+- **Player name**: after the first sign-in an account picks a public name (3-16 characters, unique ignoring case, fixed once chosen). Opponents and the lobby list see that name and the rating, never the email or the Google/Apple profile name.
+- **Enforcement** is on the server: every matchmaking request (`create`, `joinById`, `reconnect`) goes through `BugshopRoom.onAuth`, which reads the session cookie and refuses guests (401) and accounts without a name (403). One account can hold only one seat in a game, and a held seat can only be resumed by the account that took it. The lobby list stays readable by guests. In the web app, `AccountGate` shows the sign-in card instead of the game; for pass-and-play that UI gate is the whole enforcement, since that mode never touches the server.
+- **Elo**: everyone starts at 1200. When an online game ends, both ratings are updated once, in one transaction (`PlayerStore.recordGame`), with K = 40 for a player's first 20 rated games and 24 after that; ratings never go below 100. Public and private games are both rated. A game that ends before each side has made a move is not rated. The snapshot carries `players` (name, rating) and, after a rated game, `ratings` (before/after per color).
+- **Storage**: one SQLite file through Node's built-in `node:sqlite` (no native module to build). Better Auth owns `user`, `session`, `account`, `verification`; Bugshop adds `player` (name, rating, record) and `game_result` (who, result, rating changes). Room IDs are not stored. All SQL is prepared statements with bound parameters.
+- **Mail** goes through Resend's HTTP API (`mail.ts`). Without a key, development prints the mail to the server log and skips address confirmation; production refuses to start.
 
 ### Analytics and donations
 - The web app reports page views with Vercel Web Analytics (`@vercel/analytics`): cookieless, same-origin, and only in production builds. Game pages are reported as `/g/[room]`, because a private room ID is the invite secret.
@@ -64,7 +75,7 @@ Use a **single monorepo**. The client and server must run the *exact same* rules
 - `apps/server`: Node + **Colyseus** 0.18 (MIT). Node 24 runs the TypeScript directly, with no build step. It provides rooms, the live room listing behind the lobby list, private rooms (`create` → share ID), messaging and reconnection, so none of that is hand-written.
   - `BugshopRoom` validates every action through `packages/rules`. Clients never send clock values.
   - The clock stores `turnStartedAt` timestamps. Clients interpolate locally for display, and the server is the authority.
-  - Planned: SQLite stores finished games (PGN-like move list plus buy events) for future replays and ratings.
+  - SQLite stores accounts, ratings and each finished rated game's result. Planned: the move list plus buy events, for replays.
 
 ### Hosting and cost
 | Piece | Choice | Cost |
@@ -87,7 +98,7 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 3. ~~`apps/server` Colyseus room plus private invite links and public lobbies.~~ (done, see "Online play")
 4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS (files ready in `deploy/`, see `deploy/README.md`). Still to do: GitHub Actions auto-deploy.
 5. Vs-bot via Fairy-Stockfish WASM, plus the shop heuristic.
-6. Later: accounts (Better Auth), Glicko-2 ratings (`glicko2` npm), game replays.
+6. Done: accounts (Better Auth) and Elo ratings. Later: game replays, rating history, leaderboards.
 
 ## Online play (as built)
 **Protocol** (`packages/protocol`): one Colyseus room per game (`bugshop`), with plain JSON messages instead of Colyseus Schema state.
@@ -139,7 +150,7 @@ How this affects the implementation:
 ## Still open
 - Should Squish's price scale with game length?
 - Should the bot know about Squish, e.g. buy it if a human goes AFK?
-- Lobby list extras: filter by settings, player names once accounts exist.
+- Lobby list extras: filter by settings or rating range.
 
 ## Verification
 - `pnpm -r test`: rules unit tests (including a scripted full game with purchases).

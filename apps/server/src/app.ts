@@ -4,6 +4,10 @@ import { LOBBY_LIST_ROOM_NAME, ROOM_NAME } from '@bugshop/protocol';
 import { BugshopRoom } from './BugshopRoom.ts';
 import { LobbyListRoom } from './LobbyListRoom.ts';
 import type { Env } from './env.ts';
+import { createAuth } from './auth.ts';
+import { openDatabase, PlayerStore } from './db.ts';
+import { createAccountRoutes } from './http.ts';
+import { type Mailer, createMailer } from './mail.ts';
 
 /**
  * Only the matchmaking calls the web client uses: `joinOrCreate` for the lobby
@@ -11,13 +15,22 @@ import type { Env } from './env.ts';
  */
 const EXPOSED_METHODS = ['joinOrCreate', 'create', 'joinById', 'reconnect'];
 
-export const createGameServer = (env: Env) => {
+export interface ServerDeps {
+  /** Replaces the real mail provider (tests capture mail instead of sending it). */
+  mailer?: Mailer;
+}
+
+export const createGameServer = (env: Env, deps: ServerDeps = {}) => {
   const allowed = new Set(env.ALLOWED_ORIGINS);
   // Non-browser clients send no Origin. Browsers always do, so a foreign Origin
   // means another website is trying to use the server through a visitor's browser.
   const originOk = (origin: string | null) => origin === null || allowed.has(origin);
 
-  BugshopRoom.configure({ matchmakePerMinute: env.MATCHMAKE_PER_MINUTE, maxRooms: env.MAX_ROOMS });
+  const db = openDatabase(env.DATABASE_PATH);
+  const auth = createAuth(env, db, deps.mailer ?? createMailer(env));
+  const accounts = { auth, players: new PlayerStore(db) };
+
+  BugshopRoom.configure({ matchmakePerMinute: env.MATCHMAKE_PER_MINUTE, maxRooms: env.MAX_ROOMS }, accounts, originOk);
 
   // Matchmaking HTTP endpoints: reflect only allowed origins (the default reflects any).
   matchMaker.controller.exposedMethods = EXPOSED_METHODS;
@@ -40,6 +53,9 @@ export const createGameServer = (env: Env) => {
 
   return defineServer({
     greet: false,
+    // Account tables are created or updated before the first connection is accepted.
+    beforeListen: () => auth.init(),
+    routes: createAccountRoutes(accounts, originOk),
     transport: new WebSocketTransport({
       maxPayload: 4 * 1024, // client messages are tiny; cap them
       beforeUpgrade: request =>

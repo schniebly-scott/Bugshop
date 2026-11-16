@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Action, ShopRole } from '@bugshop/rules';
-import { type CreateOptions, SETTINGS_OPTIONS } from '@bugshop/protocol';
+import { type CreateOptions, type ProfileRequest, HANDLE_PATTERN, SETTINGS_OPTIONS } from '@bugshop/protocol';
 
 // Strict schemas: unknown keys are rejected, strings are length-bounded.
 // Colyseus disconnects any client whose message fails validation.
@@ -35,3 +35,8 @@ export const JoinOptionsSchema = z.union([z.strictObject({}), CreateOptionsSchem
 
 /** The `time` request carries no payload. */
 export const EmptySchema = z.undefined().or(z.null()).or(z.strictObject({}));
+
+/** POST /api/profile: the player name an account chooses. */
+export const ProfileSchema = z.strictObject({
+  handle: z.string().max(16).regex(HANDLE_PATTERN),
+}) satisfies z.ZodType<ProfileRequest>;

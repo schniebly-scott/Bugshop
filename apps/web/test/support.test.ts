@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseDonateUrl, redactGameUrl } from '../src/support';
+import { parseDonateUrl, redactUrl } from '../src/support';
 
 describe('parseDonateUrl', () => {
   it('accepts a plain https link', () => {
@@ -13,14 +13,18 @@ describe('parseDonateUrl', () => {
   });
 });
 
-describe('redactGameUrl', () => {
+describe('redactUrl', () => {
   it('hides the room id, query and hash of game pages', () => {
-    expect(redactGameUrl('https://bugshop.example/g/AbCdEfGh12345678?x=1#y')).toBe('https://bugshop.example/g/[room]');
+    expect(redactUrl('https://bugshop.example/g/AbCdEfGh12345678?x=1#y')).toBe('https://bugshop.example/g/[room]');
   });
 
-  it('leaves other pages alone', () => {
-    expect(redactGameUrl('https://bugshop.example/')).toBe('https://bugshop.example/');
-    expect(redactGameUrl('https://bugshop.example/hotseat')).toBe('https://bugshop.example/hotseat');
-    expect(redactGameUrl('nonsense')).toBe('nonsense');
+  it('drops query strings everywhere, so the password-reset token never leaves', () => {
+    expect(redactUrl('https://bugshop.example/reset-password?token=s3cret')).toBe('https://bugshop.example/reset-password');
+    expect(redactUrl('https://bugshop.example/?signin=failed#x')).toBe('https://bugshop.example/');
+  });
+
+  it('leaves plain pages alone and sends nothing it cannot parse', () => {
+    expect(redactUrl('https://bugshop.example/hotseat')).toBe('https://bugshop.example/hotseat');
+    expect(redactUrl('nonsense')).toBe('');
   });
 });

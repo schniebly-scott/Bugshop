@@ -6,6 +6,8 @@ import { useLobbyList } from '../online/lobbyList';
 import { loadSettings, saveSettings } from '../game/settingsStore';
 import { useNow } from '../game/useNow';
 import { SettingsForm } from './SettingsForm';
+import { AccountCard } from './Account';
+import { useAccount } from '../account/store';
 import { parseDonateUrl } from '../support';
 import { BackpackIcon, CampfireIcon, HourglassIcon, ScrollIcon, ShoeIcon, SeedIcon } from './icons';
 
@@ -13,6 +15,7 @@ export function HomePage() {
   const [busy, setBusy] = useState<GameMode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<GameSettings>(loadSettings);
+  const account = useAccount();
 
   const open = async (mode: GameMode) => {
     setBusy(mode);
@@ -53,32 +56,38 @@ export function HomePage() {
       </ol>
 
       <div className="home-grid">
-        <section className="start-panel">
-          <h3>Start a game</h3>
-          <SettingsForm value={settings} onChange={setSettings} />
-          <div className="start-actions">
-            <button type="button" className="big-button primary" disabled={busy !== null} onClick={() => open('public')}>
-              {busy === 'public' ? 'Opening…' : 'Open a lobby'}
-              <small>Anyone can join from the noticeboard</small>
-            </button>
-            <button type="button" className="big-button" disabled={busy !== null} onClick={() => open('private')}>
-              {busy === 'private' ? 'Creating…' : 'Invite a friend'}
-              <small>Private game by invite link</small>
-            </button>
-            <a
-              className="big-button"
-              href="/hotseat"
-              onClick={e => {
-                saveSettings(settings); // hotseat starts with the settings chosen here
-                linkTo('/hotseat')(e);
-              }}
-            >
-              Pass and play
-              <small>Two players on this device</small>
-            </a>
-          </div>
-          {error && <p className="error" role="alert">{error}</p>}
-        </section>
+        {account.status === 'ready' ? (
+          <section className="start-panel">
+            <h3>Start a game</h3>
+            <SettingsForm value={settings} onChange={setSettings} />
+            <div className="start-actions">
+              <button type="button" className="big-button primary" disabled={busy !== null} onClick={() => open('public')}>
+                {busy === 'public' ? 'Opening…' : 'Open a lobby'}
+                <small>Anyone can join from the noticeboard</small>
+              </button>
+              <button type="button" className="big-button" disabled={busy !== null} onClick={() => open('private')}>
+                {busy === 'private' ? 'Creating…' : 'Invite a friend'}
+                <small>Private game by invite link</small>
+              </button>
+              <a
+                className="big-button"
+                href="/hotseat"
+                onClick={e => {
+                  saveSettings(settings); // hotseat starts with the settings chosen here
+                  linkTo('/hotseat')(e);
+                }}
+              >
+                Pass and play
+                <small>Two players on this device</small>
+              </a>
+            </div>
+            {error && <p className="error" role="alert">{error}</p>}
+          </section>
+        ) : (
+          <section className="start-panel sign-in-panel">
+            <AccountCard />
+          </section>
+        )}
 
         <LobbyBoard />
       </div>
@@ -140,6 +149,9 @@ function LobbyNote({ lobby, now }: { lobby: LobbyListing; now: number }) {
   const minutes = Math.max(0, Math.floor((now - lobby.createdAt) / 60_000));
   return (
     <li className="lobby-note">
+      <span className="lobby-host">
+        {lobby.host.name} <span className="rating">{lobby.host.rating}</span>
+      </span>
       <span className="lobby-rules">
         <span>
           <SeedIcon /> 1 seed per {lobby.settings.secondsPerCoin}s

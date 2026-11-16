@@ -194,6 +194,9 @@ export class OnlineSession {
 
 const describeJoinError = (e: unknown): string => {
   const msg = e instanceof Error ? e.message : '';
+  if (/already in this game/i.test(msg)) return "You're already in this game in another tab or on another device.";
+  if (/sign in/i.test(msg)) return 'Your sign-in has expired. Reload the page and sign in again.';
+  if (/player name/i.test(msg)) return 'Choose a player name before playing.';
   if (/not found|locked/i.test(msg)) return 'This game is full, finished or no longer exists.';
   if (/too many/i.test(msg)) return 'Too many requests. Wait a minute and try again.';
   if (/full/i.test(msg)) return 'The server is full right now. Try again later.';

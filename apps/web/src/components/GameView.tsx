@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { opposite, parseSquare, type ByColor, type Color, type Role, type SquareName } from 'chessops';
 import { type Action, type GameState, type ShopRole, dropDests, getPosition, legalDests, turnOf } from '@bugshop/rules';
-import type { SeatStatus } from '@bugshop/protocol';
+import type { PlayerInfo, RatingChange, SeatStatus } from '@bugshop/protocol';
 import { Board, type BoardHandle } from './Board';
 import { PlayerBar } from './PlayerBar';
 import { Backpack } from './Backpack';
@@ -29,6 +29,11 @@ export interface GameViewProps {
   message: string | null;
   label(color: Color): string;
   seats?: ByColor<SeatStatus>;
+  /** Online games: who is playing, and the rating changes once a rated game is over. */
+  players?: ByColor<PlayerInfo | null>;
+  ratings?: ByColor<RatingChange> | null;
+  /** Shown under the result (e.g. why a game was not rated). */
+  resultNote?: string;
   /** Extra controls (flip board, leave, new game…). */
   children?: ReactNode;
 }
@@ -116,6 +121,8 @@ export function GameView(props: GameViewProps) {
       now={now}
       revealed={props.revealed.includes(color)}
       seat={props.seats?.[color]}
+      rating={props.players?.[color]?.rating}
+      ratingChange={props.ratings?.[color]}
       showPocket={color !== packOwner}
     />
   );
@@ -152,7 +159,12 @@ export function GameView(props: GameViewProps) {
         </div>
         {bar(bottom)}
         <div className="result-line" role="status" aria-live="polite">
-          {result ? <strong className="result">{result}</strong> : null}
+          {result ? (
+            <strong className="result">
+              {result}
+              {props.resultNote && <small>{props.resultNote}</small>}
+            </strong>
+          ) : null}
         </div>
       </section>
 

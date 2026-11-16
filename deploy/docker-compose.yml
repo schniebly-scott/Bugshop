@@ -9,13 +9,26 @@ services:
     environment:
       NODE_ENV: production
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?Set ALLOWED_ORIGINS in deploy/.env}
+      # Accounts. Sign-in redirects come back to the API domain.
+      PUBLIC_URL: https://${API_DOMAIN:?Set API_DOMAIN in deploy/.env}
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in deploy/.env}
+      RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY in deploy/.env}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM in deploy/.env}
+      # Optional sign-in providers (an empty value means "off").
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+      APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
     # Internal network only. Never add `ports:` here: the server trusts the
     # X-Real-IP header that Caddy sets, so it must not be reachable directly.
     expose:
       - "2567"
+    # The filesystem is read-only except for the database volume.
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      - bugshop_data:/data
     cap_drop:
       - ALL
     security_opt:
@@ -47,5 +60,6 @@ services:
     mem_limit: 256m
 
 volumes:
+  bugshop_data:
   caddy_data:
   caddy_config:

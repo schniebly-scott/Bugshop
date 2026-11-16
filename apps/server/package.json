@@ -21,6 +21,7 @@
     "@bugshop/rules": "workspace:*",
     "@colyseus/core": "0.18.23",
     "@colyseus/ws-transport": "0.18.4",
+    "better-auth": "1.7.15",
     "chessops": "0.15.1",
     "zod": "4.6.7"
   }

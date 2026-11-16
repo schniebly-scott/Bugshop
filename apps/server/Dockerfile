@@ -15,7 +15,12 @@ RUN pnpm install --frozen-lockfile --prod --filter @bugshop/server...
 FROM node:24.22.2-alpine@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    PORT=2567
+    PORT=2567 \
+    DATABASE_PATH=/data/bugshop.sqlite
+# The only writable place: the SQLite database (accounts, sessions, ratings).
+# Mount a volume here; a named volume inherits this ownership.
+RUN mkdir -p /data && chown node:node /data
+VOLUME /data
 WORKDIR /app
 # Everything stays owned by root and read-only to the app user.
 COPY --from=deps /app ./
