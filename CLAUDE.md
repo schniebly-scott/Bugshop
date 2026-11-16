@@ -5,7 +5,7 @@ Chess variant with a shop: the time your opponent uses becomes coins for you. Yo
 ## Layout
 pnpm monorepo (`pnpm-workspace.yaml`):
 - `packages/rules`: shared, pure TypeScript rules engine (built on chessops). There is no I/O; every function takes `now` explicitly. Client and server must both use it, so never re-implement rules elsewhere.
-- `apps/web`: React + Vite SPA (chessground board). Hotseat and bot modes run fully client-side; the bot (`src/bot/`) is a TypeScript search in a same-origin Web Worker.
+- `apps/web`: React + Vite SPA (chessground board). Hotseat and bot modes run fully client-side; the bot (`src/bot/`) is a TypeScript search in a same-origin Web Worker, plus Fairy-Stockfish WASM (served from `/fsf/`) for the two top levels.
 - `packages/protocol`: client/server message names and payload types (types and constants only).
 - `apps/server`: Node + Colyseus 0.18, the authoritative game server. Also hosts accounts (Better Auth at `/api/auth/*`), Elo ratings and the SQLite database (`node:sqlite`). Node 24 runs the `.ts` sources directly (type stripping), so code must stay "erasable" (no enums, namespaces or constructor parameter properties; `erasableSyntaxOnly` enforces this) and relative imports use `.ts` extensions.
 - `deploy/`: Docker Compose + Caddy for the VPS.
@@ -25,6 +25,9 @@ pnpm monorepo (`pnpm-workspace.yaml`):
 **Frontend**
 - Never use `dangerouslySetInnerHTML`, `eval`, `new Function`, or string-built HTML/URLs from user input. Player names and chat are rendered as text only.
 - Keep the strict CSP and security headers in `apps/web/vercel.json`. If you add an external origin (API, websocket, fonts), add it to `connect-src`/etc. explicitly, never `*` or `unsafe-eval`.
+- `script-src` allows `'wasm-unsafe-eval'` for one reason: the Fairy-Stockfish engine. It permits WebAssembly compilation only; JavaScript `eval` stays blocked. Don't widen it.
+- The site is cross-origin isolated (`Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp`) because the engine's threads need `SharedArrayBuffer`. Under `require-corp`, a resource from another origin (image, script, font, iframe) is blocked unless it is served with CORS or CORP. Keep assets same-origin; if you must add a cross-origin one, check it still loads in `vite preview`.
+- The engine files under `/fsf/` come unmodified from the pinned npm package (`vite.config.ts`), with its license files. Its moves are untrusted text: `stockfish.ts` checks their shape, and `applyAction` decides legality.
 - The only inline-style allowance is one `'unsafe-hashes'` hash in `style-src`, for chessground's `style="color-scheme:light only"` on its SVG layers (`wrap.js`). If a chessground upgrade changes that string, update the hash; never fall back to `'unsafe-inline'`. `vite preview` serves the same headers (read from `vercel.json`), so check the browser console there for CSP violations.
 - chessground writes `drawable` custom SVG shapes and shape labels via `innerHTML`. Never pass user-controlled content into them.
 - Page analytics (`@vercel/analytics`, production builds only) are same-origin (`/_vercel/insights/*`), so the CSP needs no extra origin. Every event goes through `redactUrl()` (`apps/web/src/support.ts`) so private room IDs and the password-reset token never reach analytics. Keep that `beforeSend`, and don't add custom events that carry room IDs, names or game state.

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Color } from 'chessops';
 import { type GameState, DEFAULT_CONFIG, applyAction, coinsAt, createGame, turnOf } from '@bugshop/rules';
 import { type BotInput, acceptsDraw, chooseMove } from '../src/bot/engine';
-import { type BotLevel, BOT_LEVELS } from '../src/bot/levels';
+import { type BotLevel, BUILTIN_LEVELS as BOT_LEVELS } from '../src/bot/levels';
 
 /** Deterministic random numbers, so a failing game can be replayed. */
 const seeded = (seed: number) => () => {

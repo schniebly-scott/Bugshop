@@ -1,4 +1,6 @@
 import { type BotInput, type BotMove, chooseMove } from './engine';
+import { LEVELS } from './levels';
+import { stockfishMove } from './stockfish';
 import type { BotReply, BotRequest } from './worker';
 
 // Asks the bot for a move. The search runs in a Web Worker (same origin, so the
@@ -31,6 +33,14 @@ const start = (): Worker | null => {
 
 /** The bot's choice for this position, or undefined if it has no legal continuation. */
 export const requestBotMove = async (input: BotInput): Promise<BotMove | undefined> => {
+  if (LEVELS[input.level].engine === 'stockfish') {
+    try {
+      return await stockfishMove(input);
+    } catch (e) {
+      // The engine could not load or stopped answering: our own strongest search plays on.
+      console.warn('Stockfish is unavailable; using the built-in search instead.', e);
+    }
+  }
   if (worker === undefined) worker = start();
   if (worker) {
     const w = worker;

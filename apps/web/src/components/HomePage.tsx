@@ -78,7 +78,7 @@ export function HomePage() {
                 }}
               >
                 Play a bot
-                <small>Four difficulty levels, unrated</small>
+                <small>Six levels, from beginner to Stockfish</small>
               </a>
               <a
                 className="big-button"

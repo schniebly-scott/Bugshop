@@ -18,7 +18,7 @@ In engine terms, Bugshop is **Crazyhouse in which captured pieces do not go to t
  Browser ───────▶│ React + Vite SPA (static)                  │
    │             │  • chessground board + pocket/shop UI      │
    │             │  • hotseat + vs-bot run 100% client-side   │
-   │             │  • bot = TS alpha-beta search in a Worker  │
+   │             │  • bot = TS search, or Fairy-Stockfish WASM│
    │             └────────────────────────────────────────────┘
    │ wss://api.bugshop.xxx
    ▼
@@ -56,12 +56,15 @@ Nobody plays without an account: not online, and not pass-and-play either.
 ### Playing a bot
 `/bot` is a practice game against the computer. It runs entirely in the browser (no server CPU), is not rated, and needs a signed-in account like every other way to play.
 
-- **Engine** (`apps/web/src/bot/engine.ts`): iterative-deepening alpha-beta over `BugshopPosition`, the same class the rules engine uses, so the bot and the rules can't disagree about legality. Quiescence search on captures, a check extension (drops make checks dangerous), and a small material + piece-square evaluation. It runs in a Web Worker (`worker.ts`, same origin, so the CSP is unchanged) with an inline fallback. The earlier plan was Fairy-Stockfish WASM; a TypeScript search was chosen instead because it needs no new dependency, no WASM or cross-origin-isolation headers, and understands the shop natively. It is weaker than Stockfish, which is fine for a casual sparring partner.
+- **Two engines.** The four lower levels use our own search; the two top levels use Fairy-Stockfish.
+  - **Built-in** (`apps/web/src/bot/engine.ts`): iterative-deepening alpha-beta over `BugshopPosition`, the same class the rules engine uses, so the bot and the rules can't disagree about legality. Quiescence search on captures, a check extension (drops make checks dangerous), and a small material + piece-square evaluation. It runs in a Web Worker (`worker.ts`) with an inline fallback, needs no dependency, and works in every browser.
+  - **Fairy-Stockfish** (`stockfish.ts`, npm `fairy-stockfish-nnue.wasm`, GPL-3.0): the WebAssembly build, served unmodified from our own origin under `/fsf/` by a small Vite plugin, together with its license and authors files. It is downloaded only when one of its levels is picked (about 0.5 MB gzipped). Bugshop is defined as a custom variant, `[bugshop:crazyhouse]` with `capturesToHand = false`, written to the engine's in-memory file system and selected with `VariantPath` / `UCI_Variant`. There is no neural network for the variant, so it uses the classical evaluation. Stockfish knows nothing about seeds: each turn the real position is searched, plus one what-if search per affordable piece (that piece added to the pocket, `searchmoves` limited to dropping it), and a purchase is made only if its drop beats the best ordinary move by more than the seeds are worth. Moves coming back from the engine are checked against a strict pattern and then go through `applyAction` like anyone's.
+  - **What Stockfish needs from the page:** shared memory for its threads, which browsers only give to cross-origin-isolated pages. So the site sends `Cross-Origin-Embedder-Policy: require-corp` next to the existing `Cross-Origin-Opener-Policy: same-origin`, and the CSP allows `'wasm-unsafe-eval'` in `script-src` (WebAssembly compilation only; `eval` stays blocked). With `require-corp`, anything loaded from another origin must opt in with CORS or CORP; today the only cross-origin traffic is the API (`fetch` with CORS, and WebSockets, which are unaffected). Browsers without WebAssembly threads or SIMD see the two levels greyed out, and if the engine fails mid-game the built-in search takes over.
 - **The shop**: each turn the bot may buy one piece and drop it at once. Unspent seeds count as a little under a pawn each in the evaluation, so a purchase has to be a good move, not just an affordable one. If the only way out of check is to buy a blocker, it finds it.
 - **Fair play**: the bot never sees the human's pocket or purchases. The opponent's pocket is emptied before searching, exactly as `redactFor()` does for an online opponent. Its own pocket stays hidden from the human until the game ends.
-- **Levels** (`levels.ts`), weakest first: Larva (1 ply, large random error, sometimes plays any legal move), Beetle (2 plies, no quiescence, so it misses replies), Mantis (3 plies plus quiescence), Hornet (deepens for 1.5 s, typically 4-5 plies). Weaker levels also look at the shop less often.
-- **Tempo** (`pace.ts`): the bot's thinking time is the human's income, so an instant bot would leave the human with no seeds. It plays at about the human's own average pace (1.2 s to 20 s per move), 1.4x slower on Larva down to 0.6x on Hornet. A faster bot hands you fewer seeds, which is part of the difficulty.
-- **Squish and draws**: Mantis and Hornet buy Squish only against a player who has been away from the board for 90 s and much longer than their usual move, which is what Squish is for. A draw offer is accepted only when the bot is clearly worse.
+- **Levels** (`levels.ts`), weakest first: Larva (1 ply, large random error, sometimes plays any legal move), Beetle (2 plies, no quiescence, so it misses replies), Mantis (3 plies plus quiescence), Hornet (deepens for 1.5 s, typically 4-5 plies), Scorpion (Stockfish limited to about 2000 Elo with `UCI_Elo`, 0.7 s a move), Tarantula (Stockfish at full strength, 1.5 s a move). Weaker levels also look at the shop less often.
+- **Tempo** (`pace.ts`): the bot's thinking time is the human's income, so an instant bot would leave the human with no seeds. It plays at about the human's own average pace (1.2 s to 20 s per move), 1.4x slower on Larva down to 0.5x on Tarantula. A faster bot hands you fewer seeds, which is part of the difficulty.
+- **Squish and draws**: Mantis and stronger buy Squish only against a player who has been away from the board for 90 s and much longer than their usual move, which is what Squish is for. A draw offer is accepted only when the bot is clearly worse.
 
 ### Analytics and donations
 - The web app reports page views with Vercel Web Analytics (`@vercel/analytics`): cookieless, same-origin, and only in production builds. Game pages are reported as `/g/[room]`, because a private room ID is the invite secret.
@@ -107,7 +110,7 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 2. ~~`apps/web` hotseat mode: board, pocket, shop panel and count-up clocks, fully offline.~~ (done)
 3. ~~`apps/server` Colyseus room plus private invite links and public lobbies.~~ (done, see "Online play")
 4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS (files ready in `deploy/`, see `deploy/README.md`). Auto-deploy after CI via GitHub Actions with a forced-command SSH key (done).
-5. Done: vs-bot (own search in TypeScript, four levels).
+5. Done: vs-bot (four levels on our own TypeScript search, two on Fairy-Stockfish WASM).
 6. Done: accounts (Better Auth) and Elo ratings. Later: game replays, rating history, leaderboards.
 
 ## Online play (as built)

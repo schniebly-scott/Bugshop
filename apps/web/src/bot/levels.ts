@@ -20,9 +20,16 @@ export interface LevelSpec {
   tempo: number;
   /** Buys Squish when the human has wandered off. */
   squishes: boolean;
+  /**
+   * Which engine plays: our own search (`engine.ts`), or Fairy-Stockfish
+   * (`stockfish.ts`), which needs a browser with WebAssembly threads.
+   */
+  engine: 'builtin' | 'stockfish';
+  /** Stockfish only: playing strength as an approximate Elo, or `null` for full strength. */
+  elo?: number | null;
 }
 
-export const BOT_LEVELS = ['larva', 'beetle', 'mantis', 'hornet'] as const;
+export const BOT_LEVELS = ['larva', 'beetle', 'mantis', 'hornet', 'scorpion', 'tarantula'] as const;
 export type BotLevel = (typeof BOT_LEVELS)[number];
 
 export const LEVELS: Record<BotLevel, LevelSpec> = {
@@ -38,6 +45,7 @@ export const LEVELS: Record<BotLevel, LevelSpec> = {
     timeMs: 300,
     tempo: 1.4,
     squishes: false,
+    engine: 'builtin',
   },
   beetle: {
     id: 'beetle',
@@ -51,6 +59,7 @@ export const LEVELS: Record<BotLevel, LevelSpec> = {
     timeMs: 600,
     tempo: 1.15,
     squishes: false,
+    engine: 'builtin',
   },
   mantis: {
     id: 'mantis',
@@ -64,6 +73,7 @@ export const LEVELS: Record<BotLevel, LevelSpec> = {
     timeMs: 1200,
     tempo: 0.9,
     squishes: true,
+    engine: 'builtin',
   },
   hornet: {
     id: 'hornet',
@@ -77,7 +87,41 @@ export const LEVELS: Record<BotLevel, LevelSpec> = {
     timeMs: 1500,
     tempo: 0.6,
     squishes: true,
+    engine: 'builtin',
+  },
+  scorpion: {
+    id: 'scorpion',
+    name: 'Scorpion',
+    blurb: 'Stockfish, held back to strong club level. Rarely misses a tactic.',
+    depth: 0,
+    quiescence: true,
+    noise: 0,
+    blunder: 0,
+    shopping: 1,
+    timeMs: 700,
+    tempo: 0.6,
+    squishes: true,
+    engine: 'stockfish',
+    elo: 2000,
+  },
+  tarantula: {
+    id: 'tarantula',
+    name: 'Tarantula',
+    blurb: 'Stockfish at full strength. For masters, and the very brave.',
+    depth: 0,
+    quiescence: true,
+    noise: 0,
+    blunder: 0,
+    shopping: 1,
+    timeMs: 1500,
+    tempo: 0.5,
+    squishes: true,
+    engine: 'stockfish',
+    elo: null,
   },
 };
+
+/** Levels played by our own search (they work in every browser, and in tests). */
+export const BUILTIN_LEVELS = BOT_LEVELS.filter(id => LEVELS[id].engine === 'builtin');
 
 export const isBotLevel = (v: unknown): v is BotLevel => BOT_LEVELS.includes(v as BotLevel);

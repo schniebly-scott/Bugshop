@@ -39,11 +39,11 @@ const MATE = 100_000;
  * seeds into pieces on the board is mildly attractive, but a drop still has to
  * be a decent move to be chosen over saving up.
  */
-const COIN_VALUE = 92;
+export const COIN_VALUE = 92;
 const MAX_PLY = 24;
 const MAX_QUIESCENCE = 6;
 /** chessops refuses positions with more than 64 pieces on board and in pockets. */
-const MAX_MATERIAL = 64;
+export const MAX_MATERIAL = 64;
 
 // ---------- evaluation ----------
 
@@ -240,7 +240,8 @@ const candidates = (root: BugshopPosition, input: BotInput, shop: boolean): Cand
  * legal continuation at all (the game is then already over by the rules).
  */
 export const chooseMove = (input: BotInput, random: () => number = Math.random): BotMove | undefined => {
-  const spec = LEVELS[input.level];
+  // The Stockfish levels are played by stockfish.ts; asked here (engine unavailable), the strongest search stands in.
+  const spec = LEVELS[input.level].engine === 'builtin' ? LEVELS[input.level] : LEVELS.hornet;
   const root = positionFromFen(input.fen);
   // Fair play: the opponent's pocket is hidden information.
   const hidden = root.pockets?.[opposite(root.turn)];

@@ -95,7 +95,7 @@ export function AppleIcon() {
 }
 
 /** Portraits of the four bots, weakest to strongest. */
-export function BugIcon({ level }: { level: 'larva' | 'beetle' | 'mantis' | 'hornet' }) {
+export function BugIcon({ level }: { level: 'larva' | 'beetle' | 'mantis' | 'hornet' | 'scorpion' | 'tarantula' }) {
   return (
     <svg className={`icon bug-icon bug-${level}`} viewBox="0 0 48 48" aria-hidden="true">
       {level === 'larva' && (
@@ -127,6 +127,36 @@ export function BugIcon({ level }: { level: 'larva' | 'beetle' | 'mantis' | 'hor
           <circle cx="17.5" cy="9.5" r="3" fill="#2a2118" />
           <circle cx="30.5" cy="9.5" r="3" fill="#2a2118" />
           <path d="M21 5 18 0M27 5l3-5" stroke="#3f6b1e" strokeWidth="1.6" strokeLinecap="round" />
+        </>
+      )}
+      {level === 'scorpion' && (
+        <>
+          <path d="M17 28 6 22M16 33H4M17 38 7 44M31 28l11-6M32 33h12M31 38l10 6" stroke="#5b2b14" strokeWidth="2.2" strokeLinecap="round" />
+          <path d="M18 22 8 14M30 22l10-8" stroke="#8a3d1c" strokeWidth="3.4" strokeLinecap="round" />
+          <path d="M8 14 3 9l6-2 3 4zM40 14l5-5-6-2-3 4z" fill="#a44a22" />
+          <ellipse cx="24" cy="31" rx="8.5" ry="12" fill="#a44a22" />
+          <path d="M16.5 27h15M16 32h16M17 37h14" stroke="#6e2f15" strokeWidth="1.6" />
+          <path d="M24 20Q22 8 30 5q8-2 9 6" fill="none" stroke="#8a3d1c" strokeWidth="4" strokeLinecap="round" />
+          <path d="M39 11l4 6-7-1z" fill="#2a1408" />
+          <circle cx="21" cy="24" r="1.3" fill="#2a1408" />
+          <circle cx="27" cy="24" r="1.3" fill="#2a1408" />
+        </>
+      )}
+      {level === 'tarantula' && (
+        <>
+          <path
+            d="M18 22Q8 12 3 20M17 26Q6 22 2 32M17 31Q8 32 4 43M19 35q-5 6-5 12M30 22q10-10 15-2M31 26q11-4 15 6M31 31q9 1 13 12M29 35q5 6 5 12"
+            fill="none"
+            stroke="#3a2a22"
+            strokeWidth="3.4"
+            strokeLinecap="round"
+          />
+          <ellipse cx="24" cy="33" rx="9.5" ry="10.5" fill="#4a352b" />
+          <path d="M19 31q5-5 10 0M18.5 36q5.5-4 11 0" stroke="#d98a3a" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <ellipse cx="24" cy="20" rx="7" ry="6" fill="#3a2a22" />
+          <circle cx="21.5" cy="17.5" r="1.4" fill="#e9d9a8" />
+          <circle cx="26.5" cy="17.5" r="1.4" fill="#e9d9a8" />
+          <path d="M21 14l-1-5M27 14l1-5" stroke="#3a2a22" strokeWidth="2.6" strokeLinecap="round" />
         </>
       )}
       {level === 'hornet' && (

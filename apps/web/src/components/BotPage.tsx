@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { Color } from 'chessops';
 import type { GameSettings } from '@bugshop/protocol';
-import { BOT_LEVELS, LEVELS } from '../bot/levels';
+import { type BotLevel, BOT_LEVELS, LEVELS } from '../bot/levels';
+import { loadStockfish, stockfishSupported } from '../bot/stockfish';
 import { type BotGameSetup, useBotGame } from '../game/useBotGame';
 import { type ColorChoice, loadBotPrefs, saveBotPrefs } from '../game/botPrefs';
 import { loadSettings, saveSettings } from '../game/settingsStore';
@@ -39,8 +40,20 @@ const COLOR_CHOICES: { id: ColorChoice; label: string }[] = [
 ];
 
 function BotSetup({ onStart }: { onStart(setup: BotGameSetup): void }) {
-  const [prefs, setPrefs] = useState(loadBotPrefs);
+  // The Stockfish levels need a browser with WebAssembly threads.
+  const [engineOk] = useState(stockfishSupported);
+  const usable = (id: BotLevel) => LEVELS[id].engine === 'builtin' || engineOk;
+  const [prefs, setPrefs] = useState(() => {
+    const saved = loadBotPrefs();
+    return usable(saved.level) ? saved : { ...saved, level: 'hornet' as BotLevel };
+  });
   const [settings, setSettings] = useState<GameSettings>(loadSettings);
+
+  // Start downloading the engine as soon as one of its levels is chosen, so the first move isn't late.
+  const wantsEngine = LEVELS[prefs.level].engine === 'stockfish';
+  useEffect(() => {
+    if (wantsEngine) void loadStockfish().catch(() => undefined);
+  }, [wantsEngine]);
 
   const start = () => {
     saveBotPrefs(prefs);
@@ -57,6 +70,13 @@ function BotSetup({ onStart }: { onStart(setup: BotGameSetup): void }) {
           Practice games don't change your rating. The bot plays at about your pace, so its thinking time earns you seeds just
           like a person's would.
         </p>
+        <p className="bot-setup-note engine-credit">
+          Scorpion and Tarantula are powered by{' '}
+          <a href="https://github.com/fairy-stockfish/Fairy-Stockfish" target="_blank" rel="noopener noreferrer">
+            Fairy-Stockfish
+          </a>{' '}
+          (GPL-3.0).
+        </p>
 
         <div className="bot-levels" role="radiogroup" aria-label="Difficulty">
           {BOT_LEVELS.map((id, i) => (
@@ -66,6 +86,7 @@ function BotSetup({ onStart }: { onStart(setup: BotGameSetup): void }) {
               role="radio"
               aria-checked={prefs.level === id}
               className={`bot-level ${prefs.level === id ? 'chosen' : ''}`}
+              disabled={!usable(id)}
               onClick={() => setPrefs({ ...prefs, level: id })}
             >
               <BugIcon level={id} />
@@ -75,7 +96,7 @@ function BotSetup({ onStart }: { onStart(setup: BotGameSetup): void }) {
                   <i key={n} className={n <= i ? 'on' : ''} />
                 ))}
               </span>
-              <small>{LEVELS[id].blurb}</small>
+              <small>{usable(id) ? LEVELS[id].blurb : 'Needs a newer browser (WebAssembly threads).'}</small>
             </button>
           ))}
         </div>

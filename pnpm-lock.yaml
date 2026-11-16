@@ -223,6 +223,9 @@ importers:
       chessops:
         specifier: 0.15.1
         version: 0.15.1
+      fairy-stockfish-nnue.wasm:
+        specifier: 1.1.12
+        version: 1.1.12
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -972,6 +975,9 @@ packages:
   express@5.3.0:
     resolution: {integrity: sha512-qCqy1xSoaugxOD4IVHb1ZWdkvCF2W3aE2okKouWj8VwJ+ztskSiXoBnCSJqfKT+cVPJhuJqe9YLbY425+Zh00g==}
     engines: {node: '>= 18'}
+
+  fairy-stockfish-nnue.wasm@1.1.12:
+    resolution: {integrity: sha512-E0z5fvgZgIK0NoLmI6krWt5g362G4mZguANy8obTXL7EFPzyOyQn9A8OmBcjRe/s4see2s9okfULTGVnCu+1XQ==}
 
   fdir@6.5.0:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
@@ -1907,6 +1913,8 @@ snapshots:
       vary: 1.1.2
     transitivePeerDependencies:
       - supports-color
+
+  fairy-stockfish-nnue.wasm@1.1.12: {}
 
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
