@@ -43,10 +43,18 @@ jobs:
           persist-credentials: false
       - name: Build server image (not pushed)
         run: docker build -f apps/server/Dockerfile -t bugshop-server:ci .
-      - name: Image starts and refuses to run without ALLOWED_ORIGINS
+      - name: Image starts and refuses to run without its required settings
+        # Placeholder values only: nothing here is a real secret.
         run: |
           ! docker run --rm bugshop-server:ci
-          docker run -d --name bugshop-ci -e ALLOWED_ORIGINS=https://example.com bugshop-server:ci
+          ! docker run --rm -e ALLOWED_ORIGINS=https://example.com bugshop-server:ci
+          docker run -d --name bugshop-ci --read-only --tmpfs /tmp \
+            -e ALLOWED_ORIGINS=https://example.com \
+            -e PUBLIC_URL=https://api.example.com \
+            -e AUTH_SECRET=ci-placeholder-secret-not-used-anywhere-else \
+            -e RESEND_API_KEY=ci-placeholder \
+            -e "MAIL_FROM=Bugshop <ci@example.com>" \
+            bugshop-server:ci
           sleep 3
           docker logs bugshop-ci | grep -q "listening"
           [ "$(docker exec bugshop-ci id -u)" != "0" ]  # runs as non-root
