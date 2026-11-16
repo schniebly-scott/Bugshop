@@ -27,8 +27,9 @@ export const createGameServer = (env: Env, deps: ServerDeps = {}) => {
   const originOk = (origin: string | null) => origin === null || allowed.has(origin);
 
   const db = openDatabase(env.DATABASE_PATH);
-  const auth = createAuth(env, db, deps.mailer ?? createMailer(env));
-  const accounts = { auth, players: new PlayerStore(db) };
+  const players = new PlayerStore(db);
+  const auth = createAuth(env, db, deps.mailer ?? createMailer(env), userId => players.deleteAccountData(userId));
+  const accounts = { auth, players };
 
   BugshopRoom.configure({ matchmakePerMinute: env.MATCHMAKE_PER_MINUTE, maxRooms: env.MAX_ROOMS }, accounts, originOk);
 

@@ -380,10 +380,10 @@ export function AccountChip() {
     const { name, rating, wins, losses, draws } = account.player;
     return (
       <div className="account-chip" title={`${account.email} · ${wins} won, ${losses} lost, ${draws} drawn`}>
-        <span className="account-name">{name}</span>
-        <span className="rating" aria-label={`Rating ${rating}`}>
-          {rating}
-        </span>
+        <a className="account-link" href="/account" onClick={linkTo('/account')} aria-label={`Your account: ${name}, rating ${rating}`}>
+          <span className="account-name">{name}</span>
+          <span className="rating">{rating}</span>
+        </a>
         <button type="button" className="link" onClick={() => void accountStore.signOut()}>
           Sign out
         </button>
@@ -393,6 +393,9 @@ export function AccountChip() {
   if (account.status === 'unnamed') {
     return (
       <div className="account-chip">
+        <a className="account-link" href="/account" onClick={linkTo('/account')}>
+          Account
+        </a>
         <button type="button" className="link" onClick={() => void accountStore.signOut()}>
           Sign out
         </button>

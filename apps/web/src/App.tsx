@@ -6,6 +6,7 @@ import { HotseatPage } from './components/HotseatPage';
 import { OnlineGamePage } from './components/OnlineGamePage';
 import { AccountChip, AccountGate, ResetPasswordPage } from './components/Account';
 import { PrivacyPage, TermsPage } from './components/LegalPages';
+import { AccountPage } from './components/AccountPage';
 import { redactUrl } from './support';
 import { linkTo, parseRoute, usePath } from './router';
 
@@ -44,6 +45,7 @@ export function App() {
       )}
       {route.page === 'reset-password' && <ResetPasswordPage />}
       {route.page === 'privacy' && <PrivacyPage />}
+      {route.page === 'account' && <AccountPage />}
       {route.page === 'terms' && <TermsPage />}
       {route.page === 'not-found' && (
         <main className="notice">

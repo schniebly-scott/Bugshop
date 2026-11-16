@@ -127,7 +127,7 @@ export function PrivacyPage() {
 
       <h3>5. How long we keep it</h3>
       <ul>
-        <li>Account, player profile and ratings: until you ask us to delete your account.</li>
+        <li>Account, player profile and ratings: until you delete your account.</li>
         <li>Sessions: until you sign out or they expire. Email links: until used or expired.</li>
         <li>Server logs: rotated as they fill, normally a few days.</li>
         <li>Backups: the database is backed up daily and each backup is deleted after 14 days.</li>
@@ -154,10 +154,10 @@ export function PrivacyPage() {
 
       <h3>8. Your rights</h3>
       <p>
-        You can ask us for a copy of your data (including in a portable format), to correct it, to delete your account and
-        data, or to restrict or object to how we use it. Email <Mail /> from the address on your account so we can confirm
-        it's you. We answer within one month. There is no self-service delete button yet, so deletion requests also go to
-        this address.
+        You can delete your account and its data yourself at any time on your{' '}
+        <Internal to="/account">account page</Internal> ("Delete my account"). You can also ask us for a copy of your data
+        (including in a portable format), to correct it, or to restrict or object to how we use it: email <Mail /> from the
+        address on your account so we can confirm it's you. We answer within one month.
       </p>
       <p>
         If you are in the EU or UK, you can also complain to your local data protection authority. If you live in a US state
@@ -264,8 +264,8 @@ export function TermsPage() {
 
       <h3>10. Ending your account</h3>
       <p>
-        You can stop using Bugshop at any time and ask us at <Mail /> to delete your account. We may end or suspend access
-        to the service as described above.
+        You can stop using Bugshop at any time, and delete your account on your{' '}
+        <Internal to="/account">account page</Internal>. We may end or suspend access to the service as described above.
       </p>
 
       <h3>11. Changes to these terms</h3>
