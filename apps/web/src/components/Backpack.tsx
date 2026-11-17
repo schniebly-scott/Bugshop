@@ -1,6 +1,6 @@
 import type { MouseEvent, TouchEvent } from 'react';
 import type { Color } from 'chessops';
-import { type GameState, type ShopRole, SHOP_ROLES, pockets } from '@bugshop/rules';
+import { type GameState, type ShopRole, SHOP_ROLES, pockets, turnOf } from '@bugshop/rules';
 import { PieceIcon } from './PieceIcon';
 import { ROLE_NAMES } from '../game/view';
 
@@ -8,7 +8,7 @@ import { ROLE_NAMES } from '../game/view';
 export function Backpack(props: {
   color: Color;
   state: GameState;
-  /** Can this screen drop from it right now (own pocket, own turn)? */
+  /** Can this screen drop from it right now (own pocket; off-turn this queues a pre-drop)? */
   canDrop: boolean;
   selected: ShopRole | null;
   onPick(role: ShopRole, e: MouseEvent | TouchEvent): void;
@@ -16,14 +16,19 @@ export function Backpack(props: {
 }) {
   const pocket = pockets(props.state)[props.color];
   const total = SHOP_ROLES.reduce((n, r) => n + pocket[r], 0);
+  const ownTurn = turnOf(props.state) === props.color;
   const hint =
     total === 0
       ? 'Empty'
       : props.selected
-        ? 'Now tap a marked square'
-        : props.canDrop
-          ? 'Drag or tap a piece to drop it'
-          : 'Drop on your turn';
+        ? ownTurn
+          ? 'Now tap a marked square'
+          : 'Tap a square to pre-drop'
+        : !props.canDrop
+          ? 'Drop on your turn'
+          : ownTurn
+            ? 'Drag or tap a piece to drop it'
+            : 'Pre-drop for your next turn';
 
   return (
     <section className={`backpack ${props.canDrop && total > 0 ? 'ready' : ''}`} aria-label="Backpack">

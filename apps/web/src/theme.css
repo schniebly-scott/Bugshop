@@ -67,6 +67,7 @@
   --last-move: rgba(211, 154, 52, 0.45);
   --dest: rgba(47, 74, 42, 0.55);
   --drop-dest: rgba(211, 154, 52, 0.6);
+  --premove: rgba(52, 84, 120, 0.5);
   --check: rgba(196, 50, 30, 0.85);
 
   --shadow: 0 1px 2px rgba(36, 28, 15, 0.22), 0 6px 18px rgba(36, 28, 15, 0.16);
@@ -416,6 +417,11 @@ cg-board square.move-dest { background: radial-gradient(var(--dest) 20%, transpa
 cg-board square.oc.move-dest { background: radial-gradient(transparent 0%, transparent 78%, var(--dest) 80%); }
 cg-board square.move-dest:hover { background: rgba(79, 122, 58, 0.35); }
 cg-board square.drop-dest { background: radial-gradient(var(--drop-dest) 26%, transparent 28%); }
+/* Pre-moves: where a piece could go next turn, and the move or drop already queued. */
+cg-board square.premove-dest { background: radial-gradient(var(--premove) 20%, transparent 22%); }
+cg-board square.oc.premove-dest { background: radial-gradient(transparent 0%, transparent 78%, var(--premove) 80%); }
+cg-board square.premove-dest:hover { background: var(--premove); }
+cg-board square.current-premove { background-color: var(--premove); }
 cg-board square.check {
   background: radial-gradient(ellipse at center, var(--check) 0%, rgba(196, 50, 30, 0.4) 40%, transparent 72%);
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { opposite, parseSquare, type ByColor, type Color, type Role, type SquareName } from 'chessops';
-import { type Action, type GameState, type ShopRole, dropDests, getPosition, legalDests, turnOf } from '@bugshop/rules';
+import { type Action, type GameState, type ShopRole, dropDests, getPosition, legalDests, pockets, turnOf } from '@bugshop/rules';
 import type { PlayerInfo, RatingChange, SeatStatus } from '@bugshop/protocol';
 import { Board, type BoardHandle } from './Board';
 import { PlayerBar } from './PlayerBar';
@@ -45,6 +45,9 @@ export function GameView(props: GameViewProps) {
   const turn = turnOf(state);
   const boardRef = useRef<BoardHandle>(null);
   const canMove = playing && controls.includes(turn);
+  // Pre-moves need a single player at this screen (online and vs bot). In hotseat
+  // both colors are controlled here, so it is always somebody's own turn.
+  const premoveColor = playing && controls.length === 1 ? controls[0] : undefined;
   const top = opposite(orientation);
   const bottom = orientation;
 
@@ -79,9 +82,16 @@ export function GameView(props: GameViewProps) {
     return act(turn, { type: 'move', uci: `${ROLE_LETTER[role]}@${dest}` });
   };
 
-  const onMove = (orig: SquareName, dest: SquareName): boolean => {
+  // A queued pre-drop is played only if the piece is still in the pocket and the
+  // square is still a legal drop; otherwise it is quietly discarded.
+  const canPredrop = (role: Role, dest: SquareName): boolean =>
+    role !== 'king' && controls.includes(turn) && pockets(state)[turn][role] > 0 && dropDests(state, role).includes(dest);
+
+  const onMove = (orig: SquareName, dest: SquareName, premove: boolean): boolean => {
     const piece = position.board.get(parseSquare(orig));
     if (piece?.role === 'pawn' && (dest[1] === '8' || dest[1] === '1')) {
+      // A queued promotion can't stop to ask: it becomes a queen.
+      if (premove) return act(turn, { type: 'move', uci: orig + dest + 'q' });
       setPendingPromotion({ orig, dest });
       return true; // keep the pawn on the target square while choosing
     }
@@ -91,7 +101,11 @@ export function GameView(props: GameViewProps) {
   const onSquareClick = (key: SquareName) => {
     if (!selectedDrop) return;
     if (dropTargets.includes(key)) drop(selectedDrop.role, key);
-    else setSelectedDrop(null);
+    else if (selectedDrop.color === premoveColor && turn !== premoveColor) {
+      // Opponent's turn: queue the drop for when ours comes.
+      boardRef.current?.predrop({ role: selectedDrop.role, color: selectedDrop.color }, key);
+      setSelectedDrop(null);
+    } else setSelectedDrop(null);
   };
 
   // Whose backpack is open: the player at the bottom, or in hotseat whoever is to move
@@ -103,7 +117,7 @@ export function GameView(props: GameViewProps) {
       <Backpack
         color={color}
         state={state}
-        canDrop={canMove && color === turn}
+        canDrop={(canMove && color === turn) || color === premoveColor}
         selected={selectedDrop?.color === color ? selectedDrop.role : null}
         onPick={(role, e) => {
           setSelectedDrop({ color, role });
@@ -143,13 +157,15 @@ export function GameView(props: GameViewProps) {
               fen={boardFen(state.fen)}
               orientation={orientation}
               turnColor={turn}
-              movableColor={canMove ? turn : undefined}
+              movableColor={premoveColor ?? (canMove ? turn : undefined)}
+              premovable={premoveColor !== undefined}
               dests={dests}
               lastMove={lastMove}
               check={check}
               dropTargets={dropTargets}
               onMove={onMove}
               onDrop={drop}
+              canPredrop={canPredrop}
               onSquareClick={onSquareClick}
             />
           </div>
