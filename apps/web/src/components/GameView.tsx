@@ -36,6 +36,13 @@ export interface GameViewProps {
   resultNote?: string;
   /** Extra controls (flip board, leave, new game…). */
   children?: ReactNode;
+  /**
+   * Players sit across the table from each other (the board doesn't turn): the
+   * backpack, shop and promotion picker turn to face whoever they belong to.
+   */
+  facingPlay?: boolean;
+  /** Local games: pausing stops both clocks and hides the board until resumed. */
+  pause?: { paused: boolean; onPause(): void; onResume(): void };
 }
 
 /** Board, backpacks, market and player bars. Shared by hotseat and online play. */
@@ -44,7 +51,8 @@ export function GameView(props: GameViewProps) {
   const playing = state.status === 'playing';
   const turn = turnOf(state);
   const boardRef = useRef<BoardHandle>(null);
-  const canMove = playing && controls.includes(turn);
+  const paused = props.pause?.paused ?? false;
+  const canMove = playing && !paused && controls.includes(turn);
   // Pre-moves need a single player at this screen (online and vs bot). In hotseat
   // both colors are controlled here, so it is always somebody's own turn.
   const premoveColor = playing && controls.length === 1 ? controls[0] : undefined;
@@ -143,7 +151,9 @@ export function GameView(props: GameViewProps) {
 
   const result = resultText(state);
   const opponentOfBuyer = opposite(buyer);
-  const canAct = playing && controls.includes(buyer);
+  const canAct = playing && !paused && controls.includes(buyer);
+  /** Turn a panel to face its owner when they sit at the far side of the board. */
+  const facing = (owner: Color) => (props.facingPlay && owner !== bottom ? 'facing-across' : 'facing-near');
 
   return (
     <main className="game-layout">
@@ -169,6 +179,15 @@ export function GameView(props: GameViewProps) {
               onSquareClick={onSquareClick}
             />
           </div>
+          {paused && (
+            <div className="paused-cover" role="status">
+              <p className="paused-title">Game paused</p>
+              <p>Both clocks are stopped. The board stays hidden until you resume.</p>
+              <button type="button" className="primary" onClick={props.pause?.onResume}>
+                Resume
+              </button>
+            </div>
+          )}
           <div className="board-toast" role="status" aria-live="polite">
             {!result && props.message ? <span>{props.message}</span> : null}
           </div>
@@ -185,9 +204,10 @@ export function GameView(props: GameViewProps) {
       </section>
 
       <aside className="side-column">
-        {backpack(packOwner)}
+        <div className={`facing ${facing(packOwner)}`}>{backpack(packOwner)}</div>
 
         {controls.length > 0 && (
+          <div className={`facing ${facing(buyer)}`}>
           <ShopScroll
             color={buyer}
             state={state}
@@ -197,6 +217,7 @@ export function GameView(props: GameViewProps) {
             onSquish={() => act(buyer, { type: 'squish' })}
             shopperSwitch={controls.length > 1 ? { onSwitch: setShopper } : undefined}
           />
+          </div>
         )}
 
         <section className="camp-card" aria-label="Game controls">
@@ -216,6 +237,16 @@ export function GameView(props: GameViewProps) {
               <ConfirmButton disabled={!canAct} onConfirm={() => act(buyer, { type: 'resign' })} confirmLabel="Really resign?">
                 Resign
               </ConfirmButton>
+              {props.pause &&
+                (paused ? (
+                  <button type="button" className="primary" onClick={props.pause.onResume}>
+                    Resume
+                  </button>
+                ) : (
+                  <button type="button" onClick={props.pause.onPause}>
+                    Pause
+                  </button>
+                ))}
             </div>
           )}
           <div className="controls">{props.children}</div>
@@ -233,6 +264,7 @@ export function GameView(props: GameViewProps) {
       {pendingPromotion && (
         <PromotionDialog
           color={turn}
+          facingAcross={!!props.facingPlay && turn !== bottom}
           onChoose={role => {
             const { orig, dest } = pendingPromotion;
             setPendingPromotion(null);

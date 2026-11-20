@@ -24,11 +24,13 @@ describe('view helpers', () => {
   it('lastMoveSquares handles moves, drops, and skips purchases', () => {
     let g = createGame({ now: 0 });
     expect(lastMoveSquares(g)).toBeUndefined();
-    g = ok(applyAction(g, 'white', { type: 'move', uci: 'e2e4' }, 60_000));
+    g = ok(applyAction(g, 'white', { type: 'move', uci: 'e2e4' }, 0)); // the clock starts with this move
+    g = ok(applyAction(g, 'black', { type: 'move', uci: 'e7e6' }, 0));
+    g = ok(applyAction(g, 'white', { type: 'move', uci: 'g1f3' }, 60_000)); // black earns a seed
     g = ok(applyAction(g, 'black', { type: 'buy', role: 'pawn' }, 60_000));
-    expect(lastMoveSquares(g)).toEqual(['e2', 'e4']);
-    g = ok(applyAction(g, 'black', { type: 'move', uci: 'P@e5' }, 60_000));
-    expect(lastMoveSquares(g)).toEqual(['e5']);
+    expect(lastMoveSquares(g)).toEqual(['g1', 'f3']);
+    g = ok(applyAction(g, 'black', { type: 'move', uci: 'P@d5' }, 60_000));
+    expect(lastMoveSquares(g)).toEqual(['d5']);
   });
 
   it('resultText describes the outcome', () => {

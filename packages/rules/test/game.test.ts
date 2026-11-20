@@ -44,32 +44,46 @@ describe('setup', () => {
 });
 
 describe('count-up clock and coins', () => {
-  it('counts the side to move up and converts opponent time into coins', () => {
+  it('does not run before the first move (as on lichess), so nobody earns coins yet', () => {
     const g = createGame({ now: 0 });
-    expect(elapsed(g, 3.5 * MIN)).toEqual({ white: 3.5 * MIN, black: 0 });
-    expect(coinsAt(g, 'black', 3.5 * MIN)).toBe(3); // floor
-    expect(coinsAt(g, 'white', 3.5 * MIN)).toBe(0);
+    expect(g.clock.turnStartedAt).toBeNull();
+    expect(elapsed(g, 30 * MIN)).toEqual({ white: 0, black: 0 });
+    expect(coinsAt(g, 'black', 30 * MIN)).toBe(0);
+    expect(errorOf(g, 'black', { type: 'buy', role: 'pawn' }, 30 * MIN)).toBe('not-enough-coins');
+  });
+
+  it("white's first move is free and starts black's clock", () => {
+    let g = createGame({ now: 0 });
+    g = mv(g, 'white', 'e2e4', 10 * MIN);
+    expect(g.clock.turnStartedAt).toBe(10 * MIN);
+    expect(elapsed(g, 13.5 * MIN)).toEqual({ white: 0, black: 3.5 * MIN });
+    expect(coinsAt(g, 'white', 13.5 * MIN)).toBe(3); // floor
+    expect(coinsAt(g, 'black', 13.5 * MIN)).toBe(0);
   });
 
   it('banks time on each move', () => {
     let g = createGame({ now: 0 });
-    g = mv(g, 'white', 'e2e4', 2 * MIN);
+    g = mv(g, 'white', 'e2e4', 2 * MIN); // free: the clock starts here
     g = mv(g, 'black', 'e7e5', 7 * MIN);
-    expect(elapsed(g, 7 * MIN)).toEqual({ white: 2 * MIN, black: 5 * MIN });
-    expect(coinsAt(g, 'white', 7 * MIN)).toBe(5);
-    expect(coinsAt(g, 'black', 7 * MIN)).toBe(2);
+    g = mv(g, 'white', 'd2d4', 8 * MIN);
+    expect(elapsed(g, 8 * MIN)).toEqual({ white: MIN, black: 5 * MIN });
+    expect(coinsAt(g, 'white', 8 * MIN)).toBe(5);
+    expect(coinsAt(g, 'black', 8 * MIN)).toBe(1);
   });
 });
 
 describe('shop', () => {
   it('lets a player buy on the opponent turn without using a turn or touching the clock', () => {
     let g = createGame({ now: 0 });
+    g = mv(g, 'white', 'e2e4', 0);
+    g = mv(g, 'black', 'e7e5', 0);
+    const clock = g.clock;
     g = act(g, 'black', { type: 'buy', role: 'knight' }, 4 * MIN); // white is thinking
     expect(turnOf(g)).toBe('white');
     expect(pockets(g).black.knight).toBe(1);
     expect(g.spent.black).toBe(3);
     expect(coinsAt(g, 'black', 4 * MIN)).toBe(1);
-    expect(g.clock).toEqual(createGame({ now: 0 }).clock);
+    expect(g.clock).toEqual(clock);
   });
 
   it('rejects purchases the player cannot afford', () => {
@@ -80,12 +94,14 @@ describe('shop', () => {
 
   it('dropping a bought piece uses the turn', () => {
     let g = createGame({ now: 0 });
-    g = mv(g, 'white', 'e2e4', 3 * MIN);
+    g = mv(g, 'white', 'e2e4', 0);
+    g = mv(g, 'black', 'e7e5', 0);
+    g = mv(g, 'white', 'g1f3', 3 * MIN); // white thought 3 minutes: black has 3 coins
     g = act(g, 'black', { type: 'buy', role: 'knight' }, 3 * MIN);
-    g = mv(g, 'black', 'N@e5', 4 * MIN);
+    g = mv(g, 'black', 'N@d5', 4 * MIN);
     expect(turnOf(g)).toBe('white');
     expect(pockets(g).black.knight).toBe(0);
-    expect(g.history.at(-1)).toMatchObject({ type: 'move', san: 'N@e5' });
+    expect(g.history.at(-1)).toMatchObject({ type: 'move', san: 'N@d5' });
   });
 
   it('cannot drop a piece that has not been bought', () => {
@@ -96,8 +112,10 @@ describe('shop', () => {
 
   it('forbids pawn drops on the 1st and 8th ranks (bughouse rule)', () => {
     let g = createGame({ now: 0, fen: '4k3/8/8/8/8/8/8/4K3[] b - - 0 1' });
+    g = mv(g, 'black', 'e8d8', 0); // first move: the clock starts
+    g = mv(g, 'white', 'e1e2', 0);
+    g = mv(g, 'black', 'd8e8', 2 * MIN); // black thought 2 minutes: white has 2 coins
     g = act(g, 'white', { type: 'buy', role: 'pawn' }, 2 * MIN);
-    g = mv(g, 'black', 'e8d8', 2 * MIN);
     expect(errorOf(g, 'white', { type: 'move', uci: 'P@a1' }, 2 * MIN)).toBe('illegal-move');
     expect(errorOf(g, 'white', { type: 'move', uci: 'P@a8' }, 2 * MIN)).toBe('illegal-move');
     const dests = dropDests(g, 'pawn');
@@ -160,12 +178,19 @@ describe('game end', () => {
 
   it('not stalemate when the stalemated side can buy and drop a piece', () => {
     let g = createGame({ now: 0, fen: stalemateFen });
-    g = mv(g, 'white', 'g1g6', MIN);
+    // Shuffle back to the same position so the clock is running, then white thinks a minute.
+    g = mv(g, 'white', 'g1a1', 0);
+    g = mv(g, 'black', 'h8h7', 0);
+    g = mv(g, 'white', 'a1g1', 0);
+    g = mv(g, 'black', 'h7h8', 0);
+    g = mv(g, 'white', 'g1g6', MIN); // black now has 1 coin
     expect(g.status).toBe('playing');
   });
 
   it('Squish needs enough coins and ends the game immediately', () => {
-    const g = createGame({ now: 0 });
+    let g = createGame({ now: 0 });
+    g = mv(g, 'white', 'e2e4', 0);
+    g = mv(g, 'black', 'e7e5', 0); // white's clock runs from here
     expect(errorOf(g, 'black', { type: 'squish' }, 29 * MIN)).toBe('not-enough-coins');
     const won = act(g, 'black', { type: 'squish' }, 30 * MIN);
     expect(won.status).toBe('squish');
@@ -217,9 +242,11 @@ describe('validation', () => {
   });
 
   it('never mutates the input state', () => {
-    const g = createGame({ now: 0 });
+    let g = createGame({ now: 0 });
+    g = mv(g, 'white', 'e2e4', 0);
+    g = mv(g, 'black', 'e7e5', 0);
     const snapshot = JSON.stringify(g);
-    mv(g, 'white', 'e2e4', MIN);
+    mv(g, 'white', 'd2d4', MIN);
     act(g, 'black', { type: 'buy', role: 'pawn' }, MIN);
     expect(JSON.stringify(g)).toBe(snapshot);
   });
@@ -236,12 +263,12 @@ describe('scripted game with purchases', () => {
   it('plays out to checkmate by a dropped piece', () => {
     let t = 0;
     let g = createGame({ now: t });
-    g = mv(g, 'white', 'e2e4', (t += 3 * MIN)); // black now has 3 coins
-    g = act(g, 'black', { type: 'buy', role: 'knight' }, t);
+    g = mv(g, 'white', 'e2e4', (t += 3 * MIN)); // free: the clock starts here
     g = mv(g, 'black', 'e7e5', (t += 10 * MIN)); // white now has 10 coins
     g = act(g, 'white', { type: 'buy', role: 'queen' }, t);
     expect(coinsAt(g, 'white', t)).toBe(1);
-    g = mv(g, 'white', 'f1c4', (t += 1000));
+    g = mv(g, 'white', 'f1c4', (t += 3 * MIN)); // black now has 3 coins
+    g = act(g, 'black', { type: 'buy', role: 'knight' }, t);
     g = mv(g, 'black', 'N@f6', (t += 1000)); // drop uses black's turn
     g = mv(g, 'white', 'd1h5', (t += 1000));
     g = mv(g, 'black', 'b8c6', (t += 1000));
@@ -252,7 +279,7 @@ describe('scripted game with purchases', () => {
     expect(g.winner).toBe('white');
     expect(g.history.filter(e => e.type === 'buy')).toHaveLength(2);
     expect(g.history.map(e => (e.type === 'move' ? e.san : e.type))).toEqual([
-      'e4', 'buy', 'e5', 'buy', 'Bc4', 'N@f6', 'Qh5', 'Nc6', 'Qxf7#',
+      'e4', 'e5', 'buy', 'Bc4', 'buy', 'N@f6', 'Qh5', 'Nc6', 'Qxf7#',
     ]);
   });
 });

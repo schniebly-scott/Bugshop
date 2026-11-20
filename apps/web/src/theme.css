@@ -503,6 +503,36 @@ button.link:disabled { background: none; text-decoration: none; }
 /* Game over: the board gives up a little height so the result fits on screen. */
 .board-column:has(.result) { flex-basis: calc(100dvh - 292px); }
 .side-column { flex: 0 0 380px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+/* Facing play (pass-and-play with the board not turning): the backpack and shop
+   turn 180° to face whoever they belong to when that player sits across the table. */
+.facing { transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1); }
+.facing-across { transform: rotate(180deg); }
+.promotion.facing-across { transform: rotate(180deg); }
+
+/* Paused (local games): the board is covered so nobody gets free thinking time. */
+.paused-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: var(--wood-ink);
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(91deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(88deg, rgba(0, 0, 0, 0.08) 0 1px, transparent 1px 23px),
+    linear-gradient(160deg, var(--wood-1), var(--wood-2) 55%, var(--wood-3));
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25), inset 0 0 0 6px rgba(255, 255, 255, 0.06), var(--shadow);
+}
+.paused-cover p { margin: 0; max-width: 30ch; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4); }
+.paused-title { font: 700 1.8rem var(--serif); letter-spacing: 0.02em; }
+.paused-cover .primary { min-width: 140px; margin-top: 6px; }
+
 /* ---------- board: carved wooden frame, coordinates on the wood ---------- */
 .board-area { position: relative; }
 .board-frame {

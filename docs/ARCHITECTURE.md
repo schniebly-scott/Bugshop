@@ -54,6 +54,11 @@ Nobody plays without an account: not online, and not pass-and-play either.
 - **Storage**: one SQLite file through Node's built-in `node:sqlite` (no native module to build). Better Auth owns `user`, `session`, `account`, `verification`; Bugshop adds `player` (name, rating, record) and `game_result` (who, result, rating changes). Room IDs are not stored. All SQL is prepared statements with bound parameters.
 - **Mail** goes through Resend's HTTP API (`mail.ts`). Without a key, development prints the mail to the server log and skips address confirmation; production refuses to start.
 
+### Pass and play (hotseat)
+- Both players share one screen; the game runs entirely in the browser (`useHotseatGame`).
+- **Pause:** a Pause button next to Resign. The game runs on its own clock (`game/pauseClock.ts`: real time minus time spent paused), which it passes to `applyAction` and the clock display. While paused that clock stands still, so neither clock runs and no seeds accrue. The board is covered, because thinking time is what earns the opponent seeds, and every action is refused until the game resumes.
+- **Facing play:** with "Turn the board to face whoever is moving" off, the players are assumed to sit across the table. The backpack, the Stump Market and the promotion picker then turn 180° to face their owner whenever that player sits at the far side of the board.
+
 ### Playing a bot
 `/bot` is a practice game against the computer. It runs entirely in the browser (no server CPU), is not rated, and needs a signed-in account like every other way to play.
 
@@ -148,6 +153,7 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 | Rule | Decision |
 |---|---|
 | Coins | You earn coins from the time your **opponent** uses: 1 coin per 60 s by default. **Chosen per game** from presets: 10, 25, 30, 45 or 60 s. |
+| Clock start | As on lichess, **no clock runs until the first move**: white's first move takes no time, and black's clock starts when it is played. Until then nobody earns coins, so nothing can be bought before the game begins. The same for every mode (online, bot, pass-and-play), because it lives in the rules engine (`newClock()` in `clock.ts`). The bot's pace-matching ignores that free first move. |
 | Prices | Standard piece values: pawn 1, knight 3, bishop 3, rook 5, queen 9. |
 | Buying | Can be done **at any time, even on your opponent's turn**, and does **not** use your turn. The piece goes into your pocket. |
 | Dropping | Placing a piece from your pocket **uses your turn**. Drops follow bughouse rules: pawns can't be dropped on the 1st or 8th rank. Drops can give check and checkmate. |

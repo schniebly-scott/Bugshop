@@ -9,15 +9,23 @@ import type { LevelSpec } from './levels';
 
 const MIN_THINK_MS = 1200;
 const MAX_THINK_MS = 20_000;
-/** Before the human has moved there is no pace to copy. */
+/** Before the human has made a timed move there is no pace to copy. */
 const OPENING_THINK_MS = 2500;
 
-const movesBy = (state: GameState, color: Color) => state.history.filter(e => e.type === 'move' && e.by === color).length;
+/**
+ * Moves `color` made while the clock was running. The clock starts with the
+ * game's first move, so that move took no time and doesn't count toward a pace.
+ */
+const timedMovesBy = (state: GameState, color: Color) => {
+  const moves = state.history.filter(e => e.type === 'move');
+  const mine = moves.filter(e => e.by === color).length;
+  return moves[0]?.by === color ? mine - 1 : mine;
+};
 
 /** How long the bot should take over its next move, in ms. `random` is in [0, 1). */
 export const thinkTime = (state: GameState, bot: Color, spec: LevelSpec, now: number, random: number): number => {
   const human = opposite(bot);
-  const moves = movesBy(state, human);
+  const moves = timedMovesBy(state, human);
   const base = moves === 0 ? OPENING_THINK_MS : (elapsed(state, now)[human] / moves) * spec.tempo;
   const jitter = 0.75 + random * 0.5;
   return Math.round(Math.min(MAX_THINK_MS, Math.max(MIN_THINK_MS, base * jitter)));
@@ -35,7 +43,7 @@ export const shouldSquish = (state: GameState, bot: Color, spec: LevelSpec, now:
   const human = opposite(bot);
   if (state.fen.split(' ')[1] !== human[0]) return false;
   const waiting = now - state.clock.turnStartedAt;
-  const moves = movesBy(state, human);
+  const moves = timedMovesBy(state, human);
   const usual = moves === 0 ? 0 : (elapsed(state, now)[human] - waiting) / moves;
   return waiting >= Math.max(AWAY_MS, usual * 4) && coinsAt(state, bot, now) >= state.config.squishPrice;
 };

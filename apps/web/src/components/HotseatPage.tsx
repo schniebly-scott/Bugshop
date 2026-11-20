@@ -11,13 +11,14 @@ import { SettingsForm } from './SettingsForm';
 
 export function HotseatPage() {
   const [settings, setSettings] = useState(loadSettings);
-  const { state, act, newGame, lastError, clearError } = useHotseatGame(settings);
+  const { state, act, newGame, lastError, clearError, paused, pause, resume, gameNow } = useHotseatGame(settings);
   const startNew = () => {
     saveSettings(settings);
     newGame(settings);
   };
   const playing = state.status === 'playing';
-  const now = useNow(playing);
+  // The clocks tick on the game's own time, which stands still while paused.
+  const now = gameNow(useNow(playing && !paused));
 
   const [autoFlip, setAutoFlip] = useState(true);
   const [manualOrientation, setManualOrientation] = useState<Color>('white');
@@ -39,6 +40,8 @@ export function HotseatPage() {
       act={act}
       message={lastError && errorText(lastError)}
       label={colorName}
+      facingPlay={!autoFlip}
+      pause={{ paused, onPause: pause, onResume: resume }}
     >
       {playing ? (
         <ConfirmButton onConfirm={startNew} confirmLabel="Abandon this game?">New game</ConfirmButton>

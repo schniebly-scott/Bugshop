@@ -2,7 +2,7 @@ import { opposite, parseUci, makeUci, makeSquare, type ByColor, type Color, type
 import { chessgroundDests } from 'chessops/compat';
 import { makeSanAndPlay } from 'chessops/san';
 import { type BugshopConfig, type ShopRole, SHOP_ROLES, makeConfig } from './config.ts';
-import { type ClockState, elapsedAt, startClock, stopClock, switchTurn } from './clock.ts';
+import { type ClockState, elapsedAt, newClock, stopClock, switchTurn } from './clock.ts';
 import { type BugshopPosition, INITIAL_FEN, positionFromFen, positionKey, positionToFen } from './position.ts';
 
 export type GameStatus =
@@ -68,7 +68,8 @@ export type RuleError =
 export type ActionResult = { ok: true; state: GameState } | { ok: false; error: RuleError };
 
 export interface CreateGameOptions {
-  now: number;
+  /** When the game was created. Informational only: the clock starts with the first move. */
+  now?: number;
   config?: Partial<BugshopConfig>;
   /** Custom start position (Crazyhouse FEN). Defaults to the standard setup with empty pockets. */
   fen?: string;
@@ -77,13 +78,13 @@ export interface CreateGameOptions {
 /** chessops refuses positions where pieces on board + in pockets exceed 64. */
 const MAX_MATERIAL = 64;
 
-export const createGame = ({ now, config, fen = INITIAL_FEN }: CreateGameOptions): GameState => {
+export const createGame = ({ config, fen = INITIAL_FEN }: CreateGameOptions): GameState => {
   const pos = positionFromFen(fen); // validates
   return {
     config: makeConfig(config),
     fen: positionToFen(pos),
     spent: { white: 0, black: 0 },
-    clock: startClock(now),
+    clock: newClock(),
     status: 'playing',
     history: [],
     positions: [positionKey(pos)],

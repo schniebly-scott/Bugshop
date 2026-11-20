@@ -194,8 +194,11 @@ describe('per-game settings', () => {
     expect(s.game!.config).toMatchObject({ msPerCoin: 10_000, squishPrice: 10 });
 
     // 100 s of White's time = 10 coins for Black at 10 s/coin: enough to Squish.
+    // (The clock starts with the first move, so both sides move once first.)
     const white = a.color() === 'white' ? a : b;
     const black = white === a ? b : a;
+    await act(white, { type: 'move', uci: 'e2e4' });
+    await act(black, { type: 'move', uci: 'e7e5' });
     advanceServerClockForTests(99_000);
     expect(await rejection(black, { type: 'squish' })).toBe('not-enough-coins');
     advanceServerClockForTests(1_000);
@@ -274,8 +277,21 @@ describe('server-authoritative play', () => {
     await black.room.leave();
   });
 
+  it('does not start the clock until the first move', async () => {
+    const { white, black } = await startPrivateGame();
+    advanceServerClockForTests(30 * MIN); // White never makes a first move
+    expect(await rejection(black, { type: 'squish' })).toBe('not-enough-coins');
+    await act(white, { type: 'move', uci: 'e2e4' });
+    const s = await black.waitFor(s => s.game!.history.length === 1, 'first move');
+    expect(s.game!.clock.elapsed).toEqual({ white: 0, black: 0 });
+    await white.room.leave();
+    await black.room.leave();
+  });
+
   it('lets the waiting player buy Squish once the opponent has used enough time', async () => {
     const { white, black } = await startPrivateGame();
+    await act(white, { type: 'move', uci: 'e2e4' });
+    await act(black, { type: 'move', uci: 'e7e5' });
     expect(await rejection(black, { type: 'squish' })).toBe('not-enough-coins');
     advanceServerClockForTests(30 * MIN); // White (to move) is absent for 30 minutes
     await expect(act(black, { type: 'squish' })).resolves.toBe(true);

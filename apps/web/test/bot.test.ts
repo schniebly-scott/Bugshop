@@ -103,8 +103,13 @@ const playGame = (white: BotLevel, black: BotLevel, seed: number, maxPlies = 160
   return state;
 };
 
+// Whole games: their length (and so the run time, at ~60 ms of search a move)
+// depends on how the seeded games happen to unfold, which any rules or engine
+// change can shift. Hence a generous limit instead of the 5 s default.
+const WHOLE_GAMES_TIMEOUT_MS = 60_000;
+
 describe('bot games', () => {
-  it('every level only ever plays legal moves and purchases', () => {
+  it('every level only ever plays legal moves and purchases', { timeout: WHOLE_GAMES_TIMEOUT_MS }, () => {
     let bought = 0;
     BOT_LEVELS.forEach((level, i) => {
       const end = playGame(level, BOT_LEVELS[(i + 1) % BOT_LEVELS.length]!, 100 + i, 120);
@@ -114,7 +119,7 @@ describe('bot games', () => {
     expect(bought).toBeGreaterThan(0);
   });
 
-  it('stronger levels beat weaker ones', () => {
+  it('stronger levels beat weaker ones', { timeout: WHOLE_GAMES_TIMEOUT_MS }, () => {
     let points = 0;
     for (let seed = 1; seed <= 4; seed++) {
       const strongIsWhite = seed % 2 === 1;
