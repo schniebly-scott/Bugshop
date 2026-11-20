@@ -12,9 +12,16 @@ import {
   Msg,
   ROOM_NAME,
 } from '@bugshop/protocol';
+import { JOIN_TIMEOUT_MESSAGE, withTimeout } from './timeout';
 
 /** Public game server URL (not a secret; baked into the bundle at build time). */
 export const SERVER_URL: string = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:2567';
+
+/**
+ * How long to wait for a room to accept us. The server holds a seat
+ * reservation for 15 s by default, so a join that takes longer has failed anyway.
+ */
+const JOIN_TIMEOUT_MS = 15_000;
 
 export type SessionStatus = 'connecting' | 'waiting' | 'playing' | 'finished' | 'reconnecting' | 'closed' | 'error';
 
@@ -106,7 +113,8 @@ export class OnlineSession {
 
   private async connect(join: (client: Client) => Promise<Room>) {
     try {
-      const room = await join(new Client(SERVER_URL));
+      // A join that completes after we gave up leaves at once, so it doesn't keep a seat.
+      const room = await withTimeout(join(new Client(SERVER_URL)), JOIN_TIMEOUT_MS, late => void late.leave(true).catch(() => undefined));
       this.attach(room);
     } catch (e) {
       this.set({ status: 'error', error: describeJoinError(e) });
@@ -198,6 +206,7 @@ const describeJoinError = (e: unknown): string => {
   if (/sign in/i.test(msg)) return 'Your sign-in has expired. Reload the page and sign in again.';
   if (/player name/i.test(msg)) return 'Choose a player name before playing.';
   if (/not found|locked/i.test(msg)) return 'This game is full, finished or no longer exists.';
+  if (msg === JOIN_TIMEOUT_MESSAGE) return "The game server didn't answer in time. Check your connection and try again.";
   if (/too many/i.test(msg)) return 'Too many requests. Wait a minute and try again.';
   if (/full/i.test(msg)) return 'The server is full right now. Try again later.';
   return 'Could not connect to the game server.';
