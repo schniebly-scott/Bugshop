@@ -88,7 +88,17 @@ export const Msg = {
   snapshot: 'snapshot',
   /** S→C (lobby list room): every open public lobby, sent on join and after each change. */
   lobbies: 'lobbies',
+  /** S→C (lobby list room): {@link OnlineCount}, sent on join and whenever it changes. */
+  online: 'online',
 } as const;
+
+/** How many people are connected to the game server right now. Counts only, never who. */
+export interface OnlineCount {
+  /** Everyone connected: on the home page or in an online game (bot and pass-and-play games run offline). */
+  online: number;
+  /** Of those, how many are seated in a game that has started. */
+  playing: number;
+}
 
 export interface Welcome {
   color: Color;
@@ -135,7 +145,23 @@ export const ApiPath = {
   profile: '/api/profile',
   /** GET: which sign-in methods are switched on ({@link AuthProviders}). */
   providers: '/api/providers',
+  /** GET: the top players by rating ({@link Leaderboard}). Public, no session needed. */
+  leaderboard: '/api/leaderboard',
 } as const;
+
+/** One row of the leaderboard: only what any player may already see (name, rating), plus games played. */
+export interface LeaderboardEntry extends PlayerInfo {
+  /** 1-based; players with the same rating share a rank. */
+  rank: number;
+  games: number;
+}
+
+export interface Leaderboard {
+  players: LeaderboardEntry[];
+}
+
+/** The leaderboard lists this many players, among those with at least `minGames` rated games. */
+export const LEADERBOARD = { size: 50, minGames: 1 } as const;
 
 /** Player names: 3-16 letters, digits, `_` or `-`, starting with a letter. Unique ignoring case. */
 export const HANDLE_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{2,15}$/;

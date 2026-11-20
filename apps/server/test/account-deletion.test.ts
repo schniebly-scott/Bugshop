@@ -75,6 +75,9 @@ describe('deleting an account', () => {
     const moth = await createAccount(ENDPOINT, 'Moth');
     const wasp = await createAccount(ENDPOINT, 'Wasp');
     await playRatedGame(moth, wasp);
+    // Both are on the leaderboard (and the board is now cached).
+    const listed = (await (await fetch(`${ENDPOINT}${ApiPath.leaderboard}`)).json()) as { players: { name: string }[] };
+    expect(listed.players.map(p => p.name).sort()).toEqual(['Moth', 'Wasp']);
     const mothId = userIdOf(moth.email);
     const waspId = userIdOf(wasp.email);
     expect(query('SELECT * FROM game_result WHERE white_id = ? OR black_id = ?', mothId, mothId)).toHaveLength(1);
@@ -112,6 +115,10 @@ describe('deleting an account', () => {
     expect([game!.white_id, game!.black_id].sort()).toEqual([DELETED_PLAYER, waspId].sort());
     expect(query('SELECT games, wins FROM player WHERE user_id = ?', waspId)).toEqual([{ games: 1, wins: 1 }]);
     expect((await me(wasp)).status).toBe(200);
+
+    // Gone from the public leaderboard at once (it is cached between games).
+    const board = (await (await fetch(`${ENDPOINT}${ApiPath.leaderboard}`)).json()) as { players: { name: string }[] };
+    expect(board.players.map(p => p.name)).toEqual(['Wasp']);
 
     // The player name is free again.
     await expect(createAccount(ENDPOINT, 'Moth')).resolves.toMatchObject({ handle: 'Moth' });

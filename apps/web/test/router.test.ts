@@ -11,6 +11,7 @@ describe('parseRoute', () => {
     expect(parseRoute('/bot')).toEqual({ page: 'bot' });
     expect(parseRoute('/privacy')).toEqual({ page: 'privacy' });
     expect(parseRoute('/terms')).toEqual({ page: 'terms' });
+    expect(parseRoute('/leaderboard')).toEqual({ page: 'leaderboard' });
     expect(parseRoute('/account')).toEqual({ page: 'account' });
     expect(parseRoute('/reset-password')).toEqual({ page: 'reset-password' });
     expect(parseRoute('/g/D30D2qjIRkA3KJ_C')).toEqual({ page: 'game', roomId: 'D30D2qjIRkA3KJ_C' });

@@ -47,9 +47,10 @@ Nobody plays without an account: not online, and not pass-and-play either.
 
 - **Sign-in** is handled by [Better Auth](https://better-auth.com) inside the game server, mounted at `/api/auth/*` on Colyseus' own HTTP router (no Express). Methods: email + password (address confirmed by a mailed link, passwords reset the same way), Google, and Apple. The Google and Apple buttons only exist when their credentials are configured.
 - **Session**: an httpOnly, SameSite=Lax cookie on the API domain. The web app never sees a token; it sends the cookie with `credentials: 'include'`. This is why the API must be a subdomain of the web app's domain.
-- **Player name**: after the first sign-in an account picks a public name (3-16 characters, unique ignoring case, fixed once chosen). Opponents and the lobby list see that name and the rating, never the email or the Google/Apple profile name.
+- **Player name**: after the first sign-in an account picks a public name (3-16 characters, unique ignoring case, fixed once chosen). Opponents, the lobby list and the public leaderboard see that name and the rating, never the email or the Google/Apple profile name.
 - **Enforcement** is on the server: every matchmaking request (`create`, `joinById`, `reconnect`) goes through `BugshopRoom.onAuth`, which reads the session cookie and refuses guests (401) and accounts without a name (403). One account can hold only one seat in a game, and a held seat can only be resumed by the account that took it. The lobby list stays readable by guests. In the web app, `AccountGate` shows the sign-in card instead of the game; for pass-and-play that UI gate is the whole enforcement, since that mode never touches the server.
 - **Elo**: everyone starts at 1200. When an online game ends, both ratings are updated once, in one transaction (`PlayerStore.recordGame`), with K = 40 for a player's first 20 rated games and 24 after that; ratings never go below 100. Public and private games are both rated. A game that ends before each side has made a move is not rated. The snapshot carries `players` (name, rating) and, after a rated game, `ratings` (before/after per color).
+- **Leaderboard**: `GET /api/leaderboard` (public, no session) returns the top 50 players with at least one rated game, highest rating first: rank (equal ratings share a rank), name, rating and games played. `PlayerStore.leaderboard()` caches the result and drops the cache on every rated game and account deletion, so it's always current. The web app shows it at `/leaderboard`, highlighting the signed-in player's row.
 - **Storage**: one SQLite file through Node's built-in `node:sqlite` (no native module to build). Better Auth owns `user`, `session`, `account`, `verification`; Bugshop adds `player` (name, rating, record) and `game_result` (who, result, rating changes). Room IDs are not stored. All SQL is prepared statements with bound parameters.
 - **Mail** goes through Resend's HTTP API (`mail.ts`). Without a key, development prints the mail to the server log and skips address confirmation; production refuses to start.
 
@@ -111,12 +112,13 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 3. ~~`apps/server` Colyseus room plus private invite links and public lobbies.~~ (done, see "Online play")
 4. Deploy: Vercel for web, Docker Compose + Caddy on the VPS (files ready in `deploy/`, see `deploy/README.md`). Auto-deploy after CI via GitHub Actions with a forced-command SSH key (done).
 5. Done: vs-bot (four levels on our own TypeScript search, two on Fairy-Stockfish WASM).
-6. Done: accounts (Better Auth) and Elo ratings. Later: game replays, rating history, leaderboards.
+6. Done: accounts (Better Auth), Elo ratings and a leaderboard. Later: game replays, rating history.
 
 ## Online play (as built)
 **Protocol** (`packages/protocol`): one Colyseus room per game (`bugshop`), with plain JSON messages instead of Colyseus Schema state.
 - Client → server *requests*: `action` (a rules `Action`; the reply is `true` or a rejection reason) and `time` (server clock, used for offset estimation).
-- Server → client: `welcome` (your color) and `snapshot` (`{ game, seats, mode, serverNow }`, sent after every change).
+- Server → client: `welcome` (your color) and `snapshot` (`{ game, seats, mode, serverNow }`, sent after every change). The lobby list room also sends `lobbies` and `online`.
+- **Online count:** the `lobbies` room sends `online` (`{ online, playing }`) on join and whenever it changes (checked at most once a second, plus every 10 s). `online` is everyone connected to the server (home page visitors plus players in online game rooms); `playing` is the players in started games (locked rooms). Bot and pass-and-play games run offline in the browser, so they aren't counted. It's numbers only, never who.
 
 **Flow**
 - **Private:** `create({mode:'private', ...settings})` gives a 16-character random room ID, which is the invite link `/g/:roomId`. A friend joins with `joinById`. Private rooms are never listed.

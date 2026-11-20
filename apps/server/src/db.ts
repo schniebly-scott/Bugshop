@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { Color } from 'chessops';
-import type { GameMode, PlayerRecord, RatingChange } from '@bugshop/protocol';
+import type { GameMode, LeaderboardEntry, PlayerRecord, RatingChange } from '@bugshop/protocol';
 import { type Score, INITIAL_RATING, rateGame } from './elo.ts';
 
 // SQLite through Node's built-in driver (no native dependency to build). Better
@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS player (
   draws      INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 ) STRICT;
+CREATE INDEX IF NOT EXISTS player_rating ON player (rating);
 
 CREATE TABLE IF NOT EXISTS game_result (
   id           INTEGER PRIMARY KEY,
@@ -73,6 +74,9 @@ export class PlayerStore {
   private readonly deletePlayer;
   private readonly unlinkWhite;
   private readonly unlinkBlack;
+  private readonly topPlayers;
+  /** Last leaderboard read, dropped whenever a rating changes or an account is deleted. */
+  private leaderboardCache: { key: string; rows: LeaderboardEntry[] } | undefined;
 
   constructor(db: DatabaseSync) {
     this.db = db;
@@ -92,6 +96,27 @@ export class PlayerStore {
     this.deletePlayer = db.prepare('DELETE FROM player WHERE user_id = ?');
     this.unlinkWhite = db.prepare(`UPDATE game_result SET white_id = '${DELETED_PLAYER}' WHERE white_id = ?`);
     this.unlinkBlack = db.prepare(`UPDATE game_result SET black_id = '${DELETED_PLAYER}' WHERE black_id = ?`);
+    this.topPlayers = db.prepare(
+      'SELECT handle AS name, rating, games FROM player WHERE games >= ? ORDER BY rating DESC, games DESC, handle_key ASC LIMIT ?',
+    );
+  }
+
+  /**
+   * The top `size` players by rating among those with at least `minGames` rated
+   * games. Only public fields: name, rating and games played. Players with the
+   * same rating share a rank (1, 2, 2, 4).
+   */
+  leaderboard(size: number, minGames: number): LeaderboardEntry[] {
+    const key = `${size}:${minGames}`;
+    if (this.leaderboardCache?.key === key) return this.leaderboardCache.rows;
+    const raw = this.topPlayers.all(minGames, size) as { name: string; rating: number; games: number }[];
+    let rank = 0;
+    const rows = raw.map((r, i) => {
+      if (i === 0 || raw[i - 1]!.rating !== r.rating) rank = i + 1;
+      return { rank, ...r };
+    });
+    this.leaderboardCache = { key, rows };
+    return rows;
   }
 
   /**
@@ -106,6 +131,7 @@ export class PlayerStore {
       this.unlinkWhite.run(userId);
       this.unlinkBlack.run(userId);
       this.db.exec('COMMIT');
+      this.leaderboardCache = undefined; // a deleted player must not linger on the leaderboard
     } catch (e) {
       this.db.exec('ROLLBACK');
       throw e;
@@ -154,6 +180,7 @@ export class PlayerStore {
         white.rating, after.white, black.rating, after.black, game.now,
       );
       this.db.exec('COMMIT');
+      this.leaderboardCache = undefined;
       return {
         white: { before: white.rating, after: after.white },
         black: { before: black.rating, after: after.black },

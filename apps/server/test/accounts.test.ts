@@ -3,6 +3,7 @@ import type { Room } from '@colyseus/sdk';
 import {
   type AccountInfo,
   type AuthProviders,
+  type Leaderboard,
   type LobbyListing,
   type Snapshot,
   type Welcome,
@@ -232,5 +233,39 @@ describe('seats and ratings', () => {
     await new Promise(r => setTimeout(r, 100));
     expect((await b.waitFor(() => true, 'snapshot')).seats[a.color()]).toBe('away');
     await b.room.leave();
+  });
+});
+
+describe('leaderboard', () => {
+  const leaderboard = async () => {
+    const res = await fetch(`${ENDPOINT}${ApiPath.leaderboard}`); // no session: it's public
+    expect(res.status).toBe(200);
+    return ((await res.json()) as Leaderboard).players;
+  };
+
+  it('ranks players who have played rated games, highest rating first, with public fields only', async () => {
+    await createAccount(ENDPOINT, 'Newt'); // no games yet: not listed
+    const players = await leaderboard();
+    const names = players.map(p => p.name);
+    expect(names).toEqual(expect.arrayContaining(['Moth', 'Wasp']));
+    expect(names).not.toContain('Newt');
+    for (const p of players) expect(Object.keys(p).sort()).toEqual(['games', 'name', 'rank', 'rating']);
+    const ratings = players.map(p => p.rating);
+    expect(ratings).toEqual([...ratings].sort((x, y) => y - x));
+    expect(players[0]!.rank).toBe(1);
+  });
+
+  it('updates as soon as a rated game ends', async () => {
+    const before = await leaderboard();
+    const { white, black, whiteAccount } = await startGame();
+    await white.act({ type: 'move', uci: 'e2e4' });
+    await black.act({ type: 'move', uci: 'e7e5' });
+    await black.act({ type: 'resign' });
+    await white.waitFor(s => s.game?.status === 'resign', 'game over');
+    const after = await leaderboard();
+    const games = (list: Leaderboard['players']) => list.find(p => p.name === whiteAccount.handle)!.games;
+    expect(games(after)).toBe(games(before) + 1);
+    await white.room.leave();
+    await black.room.leave();
   });
 });

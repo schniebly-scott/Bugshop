@@ -3,7 +3,7 @@ import { linkTo } from '../router';
 
 /** Public contact for privacy requests and questions. */
 export const CONTACT_EMAIL = 'support@bugshopchess.com';
-const LAST_UPDATED = '16 November 2026';
+const LAST_UPDATED = '20 November 2026';
 
 const Mail = () => <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>;
 const Internal = ({ to, children }: { to: string; children: ReactNode }) => (
@@ -96,6 +96,12 @@ export function PrivacyPage() {
         <li>
           <strong>Other players</strong> see your player name, rating and game record during games and in lobbies. They
           never see your email address.
+        </li>
+        <li>
+          <strong>Anyone visiting the site</strong>, signed in or not, can see your player name, rating and number of
+          rated games on the public <Internal to="/leaderboard">leaderboard</Internal> once you have played a rated game
+          and are among the top players. Deleting your account removes you from it immediately. The home page also shows
+          how many people are online, as a number only.
         </li>
         <li>
           <strong>Service providers</strong> that run parts of Bugshop for us:

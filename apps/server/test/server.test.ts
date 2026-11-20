@@ -6,6 +6,7 @@ import {
   type GameMode,
   type GameSettings,
   type LobbyListing,
+  type OnlineCount,
   type Snapshot,
   type Welcome,
   DEFAULT_SETTINGS,
@@ -387,5 +388,30 @@ describe('disconnects', () => {
     const s = await black.waitFor(s => s.game!.status !== 'playing', 'game over');
     expect(s.game).toMatchObject({ status: 'resign', winner: 'black' });
     await black.room.leave();
+  });
+});
+
+describe('online count', () => {
+  it('counts visitors and seated players, and only sends numbers', async () => {
+    const room = await guestClient().joinOrCreate(LOBBY_LIST_ROOM_NAME);
+    room.reconnection.enabled = false;
+    let count: OnlineCount | undefined;
+    room.onMessage(Msg.online, (c: OnlineCount) => (count = c));
+    room.onMessage(Msg.lobbies, () => {});
+    const waitFor = (pred: (c: OnlineCount) => boolean, what: string) =>
+      until(() => (count && pred(count) ? count : undefined), what, 5000);
+
+    const first = await waitFor(() => true, 'first count');
+    expect(Object.keys(first).sort()).toEqual(['online', 'playing']);
+    expect(first.online).toBeGreaterThanOrEqual(1); // at least this visitor
+
+    const { a, b } = await startPrivateGame();
+    const during = await waitFor(c => c.playing >= first.playing + 2, 'two more playing');
+    expect(during.online).toBeGreaterThanOrEqual(first.online + 2);
+
+    await a.room.leave();
+    await b.room.leave();
+    await waitFor(c => c.playing <= during.playing - 2, 'players gone');
+    await room.leave();
   });
 });

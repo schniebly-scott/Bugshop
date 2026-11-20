@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { GameMode, GameSettings, LobbyListing } from '@bugshop/protocol';
+import type { GameMode, GameSettings, LobbyListing, OnlineCount } from '@bugshop/protocol';
 import { linkTo, navigate } from '../router';
 import { startSession } from '../online/session';
 import { useLobbyList } from '../online/lobbyList';
@@ -130,14 +130,17 @@ function TipJar() {
   );
 }
 
-/** Noticeboard of open public lobbies, updated live. */
+/** Noticeboard of open public lobbies, updated live, with who's around and a way to the leaderboard. */
 function LobbyBoard() {
-  const list = useLobbyList();
+  const { lobbies: list, online } = useLobbyList();
   const now = useNow(true, 15_000);
 
   return (
     <section className="noticeboard" aria-label="Open lobbies">
-      <h3>Open lobbies</h3>
+      <div className="noticeboard-head">
+        <h3>Open lobbies</h3>
+        <OnlineIndicator count={online} />
+      </div>
       {list.status === 'connecting' && <p className="notice-empty">Reading the noticeboard…</p>}
       {list.status === 'offline' && (
         <p className="notice-empty">Can't reach the game server right now. Pass and play still works.</p>
@@ -152,7 +155,22 @@ function LobbyBoard() {
           ))}
         </ul>
       )}
+      <a className="leaderboard-link" href="/leaderboard" onClick={linkTo('/leaderboard')}>
+        See the leaderboard →
+      </a>
     </section>
+  );
+}
+
+/** "12 online · 4 playing". Hidden until the server has sent a count. */
+function OnlineIndicator({ count }: { count: OnlineCount | null }) {
+  if (!count) return null;
+  return (
+    <p className="online-indicator" role="status" aria-live="polite">
+      <span className="online-dot" aria-hidden="true" />
+      {count.online} online
+      {count.playing > 0 && <span className="online-playing"> · {count.playing} playing</span>}
+    </p>
   );
 }
 

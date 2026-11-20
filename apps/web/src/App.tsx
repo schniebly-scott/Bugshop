@@ -8,6 +8,7 @@ import { OnlineGamePage } from './components/OnlineGamePage';
 import { AccountChip, AccountGate, ResetPasswordPage } from './components/Account';
 import { PrivacyPage, TermsPage } from './components/LegalPages';
 import { AccountPage } from './components/AccountPage';
+import { LeaderboardPage } from './components/LeaderboardPage';
 import { redactUrl } from './support';
 import { linkTo, parseRoute, usePath } from './router';
 
@@ -53,6 +54,7 @@ export function App() {
       {route.page === 'privacy' && <PrivacyPage />}
       {route.page === 'account' && <AccountPage />}
       {route.page === 'terms' && <TermsPage />}
+      {route.page === 'leaderboard' && <LeaderboardPage />}
       {route.page === 'not-found' && (
         <main className="notice">
           <h2>Lost in the woods</h2>
@@ -61,6 +63,8 @@ export function App() {
         </main>
       )}
       <footer className="site-footer">
+        <a href="/leaderboard" onClick={linkTo('/leaderboard')}>Leaderboard</a>
+        <span aria-hidden="true">·</span>
         <a href="/privacy" onClick={linkTo('/privacy')}>Privacy</a>
         <span aria-hidden="true">·</span>
         <a href="/terms" onClick={linkTo('/terms')}>Terms</a>

@@ -1,5 +1,5 @@
 import { createEndpoint, createRouter } from '@colyseus/core';
-import { type AccountInfo, type AuthProviders, type ProfileError, ApiPath } from '@bugshop/protocol';
+import { type AccountInfo, type AuthProviders, type Leaderboard, type ProfileError, ApiPath, LEADERBOARD } from '@bugshop/protocol';
 import type { Auth } from './auth.ts';
 import type { PlayerRow, PlayerStore } from './db.ts';
 import { RateLimiter } from './rateLimit.ts';
@@ -40,6 +40,12 @@ export const createAccountRoutes = (accounts: Accounts, originOk: (origin: strin
     ),
 
     providers: createEndpoint(ApiPath.providers, { method: 'GET' }, async () => json(auth.providers satisfies AuthProviders)),
+
+    // Public: names and ratings only (no emails or account IDs). Read-only, so it
+    // needs neither a session nor an origin check; the store caches it, so it's cheap.
+    leaderboard: createEndpoint(ApiPath.leaderboard, { method: 'GET' }, async () =>
+      json({ players: players.leaderboard(LEADERBOARD.size, LEADERBOARD.minGames) } satisfies Leaderboard),
+    ),
 
     me: createEndpoint(ApiPath.me, { method: 'GET', requireHeaders: true }, async ctx => {
       const user = await auth.userFor(ctx.headers);
