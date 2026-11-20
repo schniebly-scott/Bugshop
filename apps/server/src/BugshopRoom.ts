@@ -64,6 +64,36 @@ export class BugshopRoom extends Room {
   private static activeRooms = 0;
   private static accounts: Accounts | undefined;
   private static originOk: (origin: string | null) => boolean = () => true;
+  /** Game rooms in this process, for the online count (LobbyListRoom). */
+  private static live = new Set<BugshopRoom>();
+  /** Called whenever who is in a game changes (the lobby list re-counts). */
+  static onPresenceChange: (() => void) | undefined;
+
+  /**
+   * Who is here for the online count: the accounts connected to a game that is
+   * waiting or under way, and whether it is under way. A finished game counts
+   * for nobody, even while its players are still looking at the result.
+   */
+  static presence(): { userId: string; playing: boolean }[] {
+    const out: { userId: string; playing: boolean }[] = [];
+    for (const room of BugshopRoom.live) {
+      if (room.game && room.game.status !== 'playing') continue;
+      for (const color of ['white', 'black'] as const) {
+        const userId = room.userIds[color];
+        if (userId && room.seats[color] === 'connected') out.push({ userId, playing: !!room.game });
+      }
+    }
+    return out;
+  }
+
+  /** Looks up the signed-in account behind a request, if any (for counting people, not tabs). */
+  static async visitor(headers: Headers): Promise<string | null> {
+    try {
+      return (await BugshopRoom.accounts?.auth.userFor(headers))?.id ?? null;
+    } catch {
+      return null;
+    }
+  }
 
   /** Apply settings (call once at startup, before listening). */
   static configure(
@@ -142,6 +172,7 @@ export class BugshopRoom extends Room {
     }
     BugshopRoom.activeRooms++;
     this.counted = true;
+    BugshopRoom.live.add(this);
 
     const created = CreateOptionsSchema.safeParse(options);
     if (!created.success) throw new ServerError(400, 'Invalid options.');
@@ -193,6 +224,7 @@ export class BugshopRoom extends Room {
       this.game = createGame({ now: serverNow(), config: settingsToConfig(this.settings) });
     }
     this.broadcastSnapshot();
+    BugshopRoom.onPresenceChange?.();
   }
 
   /** Connection lost without the player choosing to leave: hold their seat. */
@@ -207,6 +239,7 @@ export class BugshopRoom extends Room {
     }
     this.seats[color] = 'away';
     this.broadcastSnapshot();
+    BugshopRoom.onPresenceChange?.();
     this.allowReconnection(client, Limits.reconnectSeconds).catch(() => this.seatLost(client.sessionId, false));
   }
 
@@ -222,6 +255,7 @@ export class BugshopRoom extends Room {
     this.seats[color] = 'connected';
     client.send(Msg.welcome, { color } satisfies Welcome);
     this.broadcastSnapshot();
+    BugshopRoom.onPresenceChange?.();
   }
 
   /** The player chose to leave (consented). */
@@ -231,6 +265,8 @@ export class BugshopRoom extends Room {
 
   onDispose() {
     if (this.counted) BugshopRoom.activeRooms--;
+    BugshopRoom.live.delete(this);
+    BugshopRoom.onPresenceChange?.();
   }
 
   /**
@@ -271,6 +307,7 @@ export class BugshopRoom extends Room {
       }
     }
     this.broadcastSnapshot();
+    BugshopRoom.onPresenceChange?.();
   }
 
   /**

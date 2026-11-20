@@ -430,4 +430,37 @@ describe('online count', () => {
     await waitFor(c => c.playing <= during.playing - 2, 'players gone');
     await room.leave();
   });
+  it('counts people, not tabs, and not finished games', async () => {
+    const watch = async (account?: TestAccount) => {
+      const room = await clientFor(ENDPOINT, account).joinOrCreate(LOBBY_LIST_ROOM_NAME);
+      room.reconnection.enabled = false;
+      let count: OnlineCount | undefined;
+      room.onMessage(Msg.online, (c: OnlineCount) => (count = c));
+      room.onMessage(Msg.lobbies, () => {});
+      const waitFor = (pred: (c: OnlineCount) => boolean, what: string) =>
+        until(() => (count && pred(count) ? count : undefined), what, 5000);
+      return { room, waitFor };
+    };
+    const guest = await watch();
+    const base = await guest.waitFor(() => true, 'first count');
+
+    const [ant, bee] = [accounts[0]!, accounts[1]!];
+    const host = track(await clientFor(ENDPOINT, ant).create(ROOM_NAME, opts('private')));
+    const guestPlayer = track(await clientFor(ENDPOINT, bee).joinById(host.room.roomId));
+    await host.waitFor(s => s.game !== null, 'game start');
+    await guest.waitFor(c => c.online === base.online + 2 && c.playing === base.playing + 2, 'two players');
+
+    // The same person on the home page in two more tabs still counts once.
+    const tabs = [await watch(ant), await watch(ant)];
+    for (const tab of tabs) {
+      const seen = await tab.waitFor(() => true, 'tab count');
+      expect(seen.online).toBe(base.online + 2);
+    }
+
+    // Once the game is over, its room no longer counts: only Ant (on the home page) is still online.
+    await act(host, { type: 'resign' });
+    await guest.waitFor(c => c.online === base.online + 1 && c.playing === base.playing, 'finished game not counted');
+
+    for (const r of [host.room, guestPlayer.room, ...tabs.map(t => t.room), guest.room]) await r.leave();
+  });
 });

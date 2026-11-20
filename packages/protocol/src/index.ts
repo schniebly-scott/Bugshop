@@ -94,9 +94,13 @@ export const Msg = {
 
 /** How many people are connected to the game server right now. Counts only, never who. */
 export interface OnlineCount {
-  /** Everyone connected: on the home page or in an online game (bot and pass-and-play games run offline). */
+  /**
+   * People connected: on the home page or in an online game that isn't over
+   * (bot and pass-and-play games run offline). A signed-in person counts once,
+   * however many tabs they have open; a visitor who isn't signed in, once per tab.
+   */
   online: number;
-  /** Of those, how many are seated in a game that has started. */
+  /** Of those, how many are seated in a game under way. */
   playing: number;
 }
 

@@ -1,5 +1,5 @@
 import { type AuthContext, type Client, Room, ServerError, matchMaker, subscribeLobby } from '@colyseus/core';
-import { type LobbyListing, type OnlineCount, LOBBY_LIST_ROOM_NAME, Msg, ROOM_NAME } from '@bugshop/protocol';
+import { type LobbyListing, type OnlineCount, Msg, ROOM_NAME } from '@bugshop/protocol';
 import { type LobbyMetadata, BugshopRoom } from './BugshopRoom.ts';
 
 /**
@@ -7,7 +7,38 @@ import { type LobbyMetadata, BugshopRoom } from './BugshopRoom.ts';
  * send anything (any message disconnects them). Colyseus' built-in LobbyRoom
  * isn't used because it also lists full games and sends internal room records.
  */
+/** Who a visitor is, for counting people rather than tabs. Never sent anywhere. */
+interface Visitor {
+  userId: string | null;
+}
+
 export class LobbyListRoom extends Room {
+  /** List rooms in this process (normally one). */
+  private static live = new Set<LobbyListRoom>();
+
+  /**
+   * How many people are online. A signed-in person counts once, however many
+   * tabs or games they have open; a visitor who isn't signed in counts per tab.
+   * Finished games don't count (see BugshopRoom.presence). Counts only.
+   */
+  static countOnline(): OnlineCount {
+    const people = new Set<string>();
+    const playing = new Set<string>();
+    let guests = 0;
+    for (const p of BugshopRoom.presence()) {
+      people.add(p.userId);
+      if (p.playing) playing.add(p.userId);
+    }
+    for (const room of LobbyListRoom.live) {
+      for (const client of room.clients) {
+        const userId = (client.auth as Visitor | undefined)?.userId;
+        if (userId) people.add(userId);
+        else guests++;
+      }
+    }
+    return { online: people.size + guests, playing: playing.size };
+  }
+
   maxClients = 1000;
   maxMessagesPerSecond = 2;
 
@@ -16,14 +47,15 @@ export class LobbyListRoom extends Room {
   private pendingCount: ReturnType<typeof setTimeout> | undefined;
   private lastCount: OnlineCount | undefined;
 
-  static async onAuth(_token: string, options: unknown, context: AuthContext) {
+  static async onAuth(_token: string, options: unknown, context: AuthContext): Promise<Visitor> {
     // Same per-IP limit and origin check as games, but no sign-in: anyone may
     // look at the noticeboard. No options accepted.
     BugshopRoom.checkRequest(context);
     if (options && typeof options === 'object' && Object.keys(options).length > 0) {
       throw new ServerError(400, 'Invalid options.');
     }
-    return true;
+    // A signed-in visitor is recognised only so they count once in the online count.
+    return { userId: await BugshopRoom.visitor(context.headers) };
   }
 
   async onCreate() {
@@ -31,11 +63,13 @@ export class LobbyListRoom extends Room {
     (this as unknown as { _listing: { unlisted: boolean } })._listing.unlisted = true;
     this.unsubscribe = await subscribeLobby(() => this.scheduleBroadcast());
     this.clock.setInterval(() => this.scheduleCount(), 10_000);
+    LobbyListRoom.live.add(this);
+    BugshopRoom.onPresenceChange = () => LobbyListRoom.live.forEach(r => r.scheduleCount());
   }
 
   async onJoin(client: Client) {
     client.send(Msg.lobbies, await this.listOpenLobbies());
-    client.send(Msg.online, await this.countOnline());
+    client.send(Msg.online, LobbyListRoom.countOnline());
     // Visitors arriving and leaving change the count too; the next check picks it up.
     this.scheduleCount();
   }
@@ -45,6 +79,7 @@ export class LobbyListRoom extends Room {
   }
 
   onDispose() {
+    LobbyListRoom.live.delete(this);
     this.unsubscribe?.();
     clearTimeout(this.pending);
     clearTimeout(this.pendingCount);
@@ -69,24 +104,11 @@ export class LobbyListRoom extends Room {
     if (this.pendingCount) return;
     this.pendingCount = setTimeout(async () => {
       this.pendingCount = undefined;
-      const count = await this.countOnline();
+      const count = LobbyListRoom.countOnline();
       if (count.online === this.lastCount?.online && count.playing === this.lastCount.playing) return;
       this.lastCount = count;
       this.broadcast(Msg.online, count);
     }, 1000);
-  }
-
-  /** Aggregate counts only: nothing about who is connected. */
-  private async countOnline(): Promise<OnlineCount> {
-    const [games, lists] = await Promise.all([
-      matchMaker.query({ name: ROOM_NAME }),
-      matchMaker.query({ name: LOBBY_LIST_ROOM_NAME }),
-    ]);
-    // A game room locks once both players are seated (see BugshopRoom).
-    const playing = games.reduce((n, r) => n + (r.locked ? r.clients : 0), 0);
-    const inGames = games.reduce((n, r) => n + r.clients, 0);
-    const browsing = lists.reduce((n, r) => n + r.clients, 0);
-    return { online: inGames + browsing, playing };
   }
 
   private async listOpenLobbies(): Promise<LobbyListing[]> {
