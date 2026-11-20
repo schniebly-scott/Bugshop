@@ -7,6 +7,7 @@ import type { Env } from './env.ts';
 import { createAuth } from './auth.ts';
 import { openDatabase, PlayerStore } from './db.ts';
 import { createAccountRoutes } from './http.ts';
+import { createAnnouncementSource } from './announcement.ts';
 import { type Mailer, createMailer } from './mail.ts';
 
 /**
@@ -56,7 +57,7 @@ export const createGameServer = (env: Env, deps: ServerDeps = {}) => {
     greet: false,
     // Account tables are created or updated before the first connection is accepted.
     beforeListen: () => auth.init(),
-    routes: createAccountRoutes(accounts, originOk),
+    routes: createAccountRoutes(accounts, originOk, createAnnouncementSource(env.ANNOUNCEMENT_PATH)),
     transport: new WebSocketTransport({
       maxPayload: 4 * 1024, // client messages are tiny; cap them
       beforeUpgrade: request =>

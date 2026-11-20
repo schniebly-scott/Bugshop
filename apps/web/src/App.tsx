@@ -9,6 +9,7 @@ import { AccountChip, AccountGate, ResetPasswordPage } from './components/Accoun
 import { PrivacyPage, TermsPage } from './components/LegalPages';
 import { AccountPage } from './components/AccountPage';
 import { LeaderboardPage } from './components/LeaderboardPage';
+import { AnnouncementBanner } from './components/AnnouncementBanner';
 import { redactUrl } from './support';
 import { linkTo, parseRoute, usePath } from './router';
 
@@ -34,6 +35,7 @@ export function App() {
           <AccountChip />
         </div>
       </header>
+      <AnnouncementBanner />
       {route.page === 'home' && <HomePage />}
       {route.page === 'hotseat' && (
         <AccountGate>

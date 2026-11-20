@@ -147,7 +147,24 @@ export const ApiPath = {
   providers: '/api/providers',
   /** GET: the top players by rating ({@link Leaderboard}). Public, no session needed. */
   leaderboard: '/api/leaderboard',
+  /** GET: the site-wide banner message ({@link AnnouncementReply}). Public, no session needed. */
+  announcement: '/api/announcement',
 } as const;
+
+/** Longest banner message, in characters. */
+export const ANNOUNCEMENT_MAX_LENGTH = 280;
+
+/** A site-wide message for players (maintenance, news). Plain text only. */
+export interface Announcement {
+  message: string;
+  level: 'info' | 'warning';
+  /** When it was set (ms since epoch); identifies the message, e.g. to remember a dismissal. */
+  updatedAt: number;
+}
+
+export interface AnnouncementReply {
+  announcement: Announcement | null;
+}
 
 /** One row of the leaderboard: only what any player may already see (name, rating), plus games played. */
 export interface LeaderboardEntry extends PlayerInfo {

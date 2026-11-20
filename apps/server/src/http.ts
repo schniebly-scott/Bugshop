@@ -1,5 +1,14 @@
 import { createEndpoint, createRouter } from '@colyseus/core';
-import { type AccountInfo, type AuthProviders, type Leaderboard, type ProfileError, ApiPath, LEADERBOARD } from '@bugshop/protocol';
+import {
+  type AccountInfo,
+  type AnnouncementReply,
+  type AuthProviders,
+  type Leaderboard,
+  type ProfileError,
+  ApiPath,
+  LEADERBOARD,
+} from '@bugshop/protocol';
+import type { AnnouncementSource } from './announcement.ts';
 import type { Auth } from './auth.ts';
 import type { PlayerRow, PlayerStore } from './db.ts';
 import { RateLimiter } from './rateLimit.ts';
@@ -27,7 +36,11 @@ const RESERVED = new Set(['admin', 'administrator', 'bugshop', 'moderator', 'mod
  * few account endpoints the web app needs. CORS headers are added by Colyseus
  * (allowlisted origins only, see app.ts).
  */
-export const createAccountRoutes = (accounts: Accounts, originOk: (origin: string | null) => boolean) => {
+export const createAccountRoutes = (
+  accounts: Accounts,
+  originOk: (origin: string | null) => boolean,
+  announcements: AnnouncementSource,
+) => {
   const { auth, players } = accounts;
   const profileLimiter = new RateLimiter(20, 60_000);
 
@@ -45,6 +58,11 @@ export const createAccountRoutes = (accounts: Accounts, originOk: (origin: strin
     // needs neither a session nor an origin check; the store caches it, so it's cheap.
     leaderboard: createEndpoint(ApiPath.leaderboard, { method: 'GET' }, async () =>
       json({ players: players.leaderboard(LEADERBOARD.size, LEADERBOARD.minGames) } satisfies Leaderboard),
+    ),
+
+    // Public, read-only: the banner text set from the admin dashboard (see announcement.ts).
+    announcement: createEndpoint(ApiPath.announcement, { method: 'GET' }, async () =>
+      json({ announcement: await announcements.current() } satisfies AnnouncementReply),
     ),
 
     me: createEndpoint(ApiPath.me, { method: 'GET', requireHeaders: true }, async ctx => {

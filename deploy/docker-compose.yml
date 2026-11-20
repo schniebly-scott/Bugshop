@@ -19,6 +19,8 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
       APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
+      # Site banner, written by the private admin dashboard (never public).
+      ANNOUNCEMENT_PATH: /announce/announcement.json
     # Internal network only. Never add `ports:` here: the server trusts the
     # X-Real-IP header that Caddy sets, so it must not be reachable directly.
     expose:
@@ -29,6 +31,8 @@ services:
       - /tmp
     volumes:
       - bugshop_data:/data
+      # Read-only: the game server only reads the banner; the admin dashboard writes it.
+      - bugshop_announce:/announce:ro
     cap_drop:
       - ALL
     security_opt:
@@ -75,5 +79,8 @@ services:
 
 volumes:
   bugshop_data:
+  # Fixed name so the separate admin dashboard stack can mount it (as external).
+  bugshop_announce:
+    name: bugshop_announce
   caddy_data:
   caddy_config:

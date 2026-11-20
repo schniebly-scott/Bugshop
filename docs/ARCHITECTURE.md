@@ -71,6 +71,10 @@ Nobody plays without an account: not online, and not pass-and-play either.
 - The web app reports page views with Vercel Web Analytics (`@vercel/analytics`): cookieless, same-origin, and only in production builds. Game pages are reported as `/g/[room]`, because a private room ID is the invite secret.
 - The home page shows a donation sign ("Keep the campfire burning") when `VITE_DONATE_URL` is set to an https link. There are no accounts or payments in the app itself; the link just opens the donation page in a new tab.
 
+### Maintainer dashboard and site banner
+- The maintainer's dashboard (sign-ups, games, ratings, server health, banner editor) lives in a **separate private repo**, because dashboards collect queries, exports and server details that must not land in this public repo's history. It runs on the VPS with **no public port** (bound to 127.0.0.1, reached through an SSH tunnel) and reads the database read-only. There is no admin API on the game server.
+- **Site banner:** the dashboard writes `announcement.json` (`{ message, level: 'info' | 'warning', updatedAt, expiresAt? }`) into the `bugshop_announce` volume. The game server mounts that volume read-only (`ANNOUNCEMENT_PATH`), checks the file's modification time at most every 10 s, validates it strictly (`apps/server/src/announcement.ts`: at most 4 KB, message 1-280 characters with no control or bidi characters, unknown fields rejected), and serves it at the public `GET /api/announcement`. Anything invalid, expired or missing means no banner. The web app (`AnnouncementBanner`) shows it as plain text under the header, re-checks every 5 minutes, and remembers a dismissal per message (by `updatedAt`) in localStorage.
+
 ### One repo, not two
 Use a **single monorepo**. The client and server must run the *exact same* rules code (`packages/rules`). In two repos you would have to publish and version that package and keep both sides in sync, which is a common source of desync bugs. Deploying from one repo is still easy: set the Vercel project's Root Directory to `apps/web`, and have GitHub Actions deploy `apps/server` to the VPS only when `apps/server/**` or `packages/**` change.
 

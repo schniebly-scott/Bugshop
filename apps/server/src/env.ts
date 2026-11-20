@@ -32,6 +32,11 @@ const EnvSchema = z.object({
   /** Resend API key and sender (e.g. "Bugshop <camp@example.com>") for verification and password-reset mail. */
   RESEND_API_KEY: z.string().min(1).optional(),
   MAIL_FROM: z.string().min(3).optional(),
+  /**
+   * JSON file with the site banner, written by the private admin dashboard and
+   * mounted read-only here. Unset: no banner.
+   */
+  ANNOUNCEMENT_PATH: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
