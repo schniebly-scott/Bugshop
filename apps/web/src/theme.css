@@ -261,38 +261,121 @@ button.armed { color: #fff; background: var(--danger); border-color: #7c2c1c; bo
   margin: 0 auto;
   padding: 12px 16px 6px;
 }
-/* Maintainer's message under the header. */
-.announcement {
+/* Maintainer's message: a wooden trail sign hanging from two ropes under the
+   header, as wide as its text. Warnings are painted amber like a hazard marker. */
+.announcement-wrap { display: flex; justify-content: center; padding: 0 16px; }
+.trail-sign {
+  --sign-ink: var(--wood-ink);
+  --sign-kicker: #f6cf7e;
+  position: relative;
+  isolation: isolate; /* the ropes stay above the page, with or without the swing animation */
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  max-width: 1208px;
-  margin: 4px auto 8px;
-  padding: 9px 10px 9px 16px;
-  color: var(--ink);
-  background: linear-gradient(180deg, var(--parchment-0), var(--parchment-1));
-  border: 1.5px solid var(--parchment-edge);
-  border-left: 6px solid var(--leaf-2);
+  align-items: center;
+  gap: 14px;
+  width: fit-content;
+  max-width: 760px;
+  margin: 22px 0 6px;
+  padding: 18px 12px 14px 16px;
+  color: var(--sign-ink);
   border-radius: 10px;
-  box-shadow: var(--shadow);
+  background:
+    /* nail heads where the ropes are tied */
+    radial-gradient(circle at 15px 8px, #2a1a0e 0 2.6px, rgba(255, 255, 255, 0.28) 3px, transparent 3.6px),
+    radial-gradient(circle at calc(100% - 15px) 8px, #2a1a0e 0 2.6px, rgba(255, 255, 255, 0.28) 3px, transparent 3.6px),
+    /* wood grain */
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 11px),
+    repeating-linear-gradient(180deg, transparent 0 13px, rgba(0, 0, 0, 0.07) 13px 14px),
+    linear-gradient(180deg, var(--wood-1), var(--wood-2));
+  box-shadow:
+    inset 0 -3px 0 rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 2px 3px rgba(36, 28, 15, 0.3),
+    0 10px 22px rgba(36, 28, 15, 0.22);
+  transform-origin: 50% -22px;
+  animation: sign-swing 1.1s cubic-bezier(0.3, 0.6, 0.35, 1) both;
 }
-.announcement.warning { border-left-color: #c98b2b; }
-.announcement p { flex: 1; margin: 0; padding-top: 3px; font-weight: 600; overflow-wrap: anywhere; }
-.announcement-close {
+/* Ropes up to the header, ending at the nails. */
+.trail-sign::before,
+.trail-sign::after {
+  content: '';
+  position: absolute;
+  top: -22px;
+  width: 4px;
+  height: 28px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(160deg, #d8b679 0 3px, #8f6a3a 3px 6px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.trail-sign::before { left: 13px; }
+.trail-sign::after { right: 13px; }
+@keyframes sign-swing {
+  0% { opacity: 0; transform: translateY(-10px) rotate(-3deg); }
+  35% { opacity: 1; transform: translateY(0) rotate(1.6deg); }
+  60% { transform: rotate(-0.8deg); }
+  80% { transform: rotate(0.3deg); }
+  100% { transform: rotate(0); }
+}
+.trail-sign .icon { flex: none; width: 42px; height: 50px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)); }
+.lantern-glow { fill: #ffe9a6; }
+.lantern-icon .flame { animation-duration: 1.4s; }
+.trail-sign-text { min-width: 0; padding-right: 4px; }
+.trail-sign-kicker {
+  display: block;
+  margin-bottom: 1px;
+  font: 800 0.7rem/1.2 var(--sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sign-kicker);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+.trail-sign p {
+  margin: 0;
+  font: 700 1.14rem/1.35 var(--serif);
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45), 0 -1px 0 rgba(255, 255, 255, 0.06);
+  overflow-wrap: anywhere;
+}
+.trail-sign-close {
   flex: none;
-  min-height: 0;
+  align-self: flex-start;
   width: 30px;
+  min-height: 0;
   height: 30px;
   padding: 0;
-  font-size: 1.2rem;
-  line-height: 1;
-  color: var(--ink-soft);
-  background: transparent;
+  color: var(--sign-ink);
+  background: rgba(0, 0, 0, 0.2);
   border: none;
-  box-shadow: none;
+  border-radius: 50%;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  opacity: 0.8;
 }
-.announcement-close:hover { color: var(--ink); background: var(--parchment-2); }
-@media (max-width: 1240px) { .announcement { margin-left: 16px; margin-right: 16px; } }
+.trail-sign-close svg { width: 13px; height: 13px; }
+.trail-sign-close:hover { opacity: 1; background: rgba(0, 0, 0, 0.32); }
+.trail-sign-close:focus-visible { outline: 2px solid var(--sign-kicker); outline-offset: 2px; }
+
+/* Warning: the board is painted amber, with a hazard stripe along the bottom. */
+.trail-sign.warning {
+  --sign-ink: var(--amber-ink);
+  --sign-kicker: #6b3a04;
+  padding-bottom: 19px;
+  background:
+    radial-gradient(circle at 15px 8px, #2a1a0e 0 2.6px, rgba(255, 255, 255, 0.4) 3px, transparent 3.6px),
+    radial-gradient(circle at calc(100% - 15px) 8px, #2a1a0e 0 2.6px, rgba(255, 255, 255, 0.4) 3px, transparent 3.6px),
+    repeating-linear-gradient(-45deg, #2b1a05 0 7px, #e8b04a 7px 14px) bottom / 100% 6px no-repeat,
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 11px),
+    linear-gradient(180deg, #f0bd57, #d39a34);
+}
+.trail-sign.warning p,
+.trail-sign.warning .trail-sign-kicker { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35); }
+.trail-sign.warning .trail-sign-close { background: rgba(43, 26, 5, 0.14); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2); }
+.trail-sign.warning .trail-sign-close:hover { background: rgba(43, 26, 5, 0.24); }
+.trail-sign.warning .icon { filter: none; }
+
+@media (max-width: 520px) {
+  .trail-sign { gap: 10px; margin-top: 20px; padding: 16px 8px 12px 12px; }
+  .trail-sign .icon { width: 32px; height: 38px; }
+  .trail-sign p { font-size: 1.02rem; }
+}
 
 .site-header h1 { margin: 0; font: 700 1.5rem/1 var(--serif); letter-spacing: 0.02em; }
 .site-header h1 a {

@@ -71,6 +71,32 @@ export function CampfireIcon({ className = '' }: { className?: string }) {
   );
 }
 
+/** Camp lantern with a flickering flame: news on the announcement sign. */
+export function LanternIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`icon lantern-icon ${className}`} viewBox="0 0 40 50" aria-hidden="true">
+      <circle cx="20" cy="5" r="3.5" fill="none" stroke="var(--lantern-metal, #2f2418)" strokeWidth="2.2" />
+      <path d="M11 14h18l-4-5H15z" fill="var(--lantern-metal, #2f2418)" />
+      <rect className="lantern-glow" x="11" y="14" width="18" height="24" rx="4" />
+      <path className="flame flame-outer" d="M20 34c-4-1.5-4.5-6.5-2-10 .6 2.4 2 2.6 2 0 3.6 2.6 5 6.6 3 9-.7.8-1.8 1-3 1Z" />
+      <path d="M13.5 14v24M26.5 14v24" stroke="var(--lantern-metal, #2f2418)" strokeWidth="2.2" />
+      <rect x="8.5" y="38" width="23" height="6" rx="2.5" fill="var(--lantern-metal, #2f2418)" />
+    </svg>
+  );
+}
+
+/** Painted trail-hazard sign: warnings on the announcement sign. */
+export function HazardIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`icon hazard-icon ${className}`} viewBox="0 0 44 42" aria-hidden="true">
+      <path d="M22 4 41 37H3Z" fill="var(--hazard-ink, #2b1a05)" stroke="var(--hazard-ink, #2b1a05)" strokeWidth="4" strokeLinejoin="round" />
+      <path d="M22 11 35 34H9Z" fill="var(--hazard-face, #ffe08a)" />
+      <rect x="20" y="17" width="4" height="10" rx="2" fill="var(--hazard-ink, #2b1a05)" />
+      <circle cx="22" cy="30.5" r="2.3" fill="var(--hazard-ink, #2b1a05)" />
+    </svg>
+  );
+}
+
 // Sign-in provider marks, drawn as each provider's guidelines require.
 export function GoogleIcon() {
   return (
