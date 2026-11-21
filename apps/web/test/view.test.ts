@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction, createGame, type GameState } from '@bugshop/rules';
-import { boardFen, formatClock, lastMoveSquares, resultText } from '../src/game/view';
+import { boardFen, firstMoveText, formatClock, lastMoveSquares, resultText } from '../src/game/view';
 
 const ok = (r: ReturnType<typeof applyAction>): GameState => {
   if (!r.ok) throw new Error(r.error);
@@ -37,5 +37,17 @@ describe('view helpers', () => {
     const g = ok(applyAction(createGame({ now: 0 }), 'black', { type: 'resign' }, 0));
     expect(resultText(g)).toBe('Black resigned. White wins.');
     expect(resultText(createGame({ now: 0 }))).toBeUndefined();
+  });
+});
+
+describe('first-move countdown', () => {
+  it('prompts the player whose move is due, and counts whole seconds up', () => {
+    expect(firstMoveText(true, 'Ant', 16_200)).toBe('Your move! Make your first move within 17 s, or the game is aborted.');
+    expect(firstMoveText(false, 'Ant', 3_000)).toBe("Waiting for Ant's first move (3 s).");
+    expect(firstMoveText(false, 'Ant', -500)).toBe("Waiting for Ant's first move (0 s).");
+  });
+
+  it('describes an aborted game', () => {
+    expect(resultText({ ...createGame({}), status: 'aborted' })).toMatch(/aborted/);
   });
 });

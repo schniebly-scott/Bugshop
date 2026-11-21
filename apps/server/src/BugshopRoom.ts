@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { CloseCode, Room, ServerError, generateId, validate, type AuthContext, type Client, type Delayed } from '@colyseus/core';
 import type { ByColor, Color } from 'chessops';
-import { type GameState, applyAction, createGame } from '@bugshop/rules';
+import { type GameState, abortGame, applyAction, createGame, firstMoveDue } from '@bugshop/rules';
 import {
   type ActionRejection,
   type GameMode,
@@ -43,6 +43,8 @@ export interface RoomSettings {
   finishedTimeoutMs: number;
   /** Hard cap on a room's lifetime. */
   maxLifetimeMs: number;
+  /** Time each player has for their first move before the game is aborted (lichess-style). */
+  firstMoveMs: number;
 }
 
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
@@ -51,6 +53,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   waitingTimeoutMs: 60 * MINUTE,
   finishedTimeoutMs: 10 * MINUTE,
   maxLifetimeMs: 24 * 60 * MINUTE,
+  firstMoveMs: Limits.firstMoveSeconds * 1000,
 };
 
 /**
@@ -125,12 +128,17 @@ export class BugshopRoom extends Room {
   private rated = false;
   private lifecycleTimer: Delayed | undefined;
   private counted = false;
+  /** When the game started (both seats taken), for the first-move timer. */
+  private startedAt = 0;
+  private firstMoveTimer: Delayed | undefined;
 
   messages = {
     [Msg.action]: validate(ActionSchema, (client, action, ctx) => {
       const color = this.colorOf.get(client.sessionId);
       if (!color) return ctx.reject<ActionRejection>('not-a-player');
       if (!this.game) return ctx.reject<ActionRejection>('not-started');
+      // A first move that comes too late doesn't count: the game is already aborted.
+      if (this.abortIfLate()) return ctx.reject<ActionRejection>('game-over');
       const res = applyAction(this.game, color, action, serverNow());
       if (!res.ok) return ctx.reject<ActionRejection>(res.error);
       this.setGame(res.state);
@@ -221,7 +229,9 @@ export class BugshopRoom extends Room {
       // Both seats taken: start the game and keep the seats reserved for these two players.
       void this.lock();
       this.lifecycleTimer?.clear();
-      this.game = createGame({ now: serverNow(), config: settingsToConfig(this.settings) });
+      this.startedAt = serverNow();
+      this.game = createGame({ now: this.startedAt, config: settingsToConfig(this.settings) });
+      this.watchFirstMove();
     }
     this.broadcastSnapshot();
     BugshopRoom.onPresenceChange?.();
@@ -296,7 +306,32 @@ export class BugshopRoom extends Room {
 
   private setGame(game: GameState) {
     this.game = game;
+    this.watchFirstMove();
     this.afterGameChange();
+  }
+
+  private firstMoveDue() {
+    return this.game ? firstMoveDue(this.game, this.startedAt, BugshopRoom.settings.firstMoveMs) : null;
+  }
+
+  /** Aborts the game if a first move is overdue. Returns whether it did. */
+  private abortIfLate(): boolean {
+    const due = this.firstMoveDue();
+    if (!this.game || !due || serverNow() < due.deadline) return false;
+    this.game = abortGame(this.game, serverNow());
+    this.firstMoveTimer?.clear();
+    this.afterGameChange();
+    return true;
+  }
+
+  /** Arms the abort timer for whichever first move is due (lichess-style), or clears it. */
+  private watchFirstMove() {
+    this.firstMoveTimer?.clear();
+    const due = this.firstMoveDue();
+    if (!due || !Number.isFinite(due.deadline)) return;
+    this.firstMoveTimer = this.clock.setTimeout(() => {
+      if (!this.abortIfLate()) this.watchFirstMove();
+    }, Math.max(0, due.deadline - serverNow()) + 50);
   }
 
   private afterGameChange() {
@@ -350,6 +385,7 @@ export class BugshopRoom extends Room {
         seats: { ...this.seats },
         players: { ...this.players },
         ratings: this.ratings,
+        firstMove: this.firstMoveDue(),
         serverNow: now,
       };
       client.send(Msg.snapshot, snapshot);

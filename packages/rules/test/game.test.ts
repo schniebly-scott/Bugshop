@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   type Action,
   type GameState,
+  abortGame,
   applyAction,
   coinsAt,
   createGame,
   dropDests,
   elapsed,
+  firstMoveDue,
   pockets,
   turnOf,
 } from '../src/index.ts';
@@ -343,5 +345,34 @@ describe('config validation', () => {
     expect(() => createGame({ now: 0, config: { msPerCoin: Number.NaN } })).toThrow(RangeError);
     expect(() => createGame({ now: 0, config: { squishPrice: -5 } })).toThrow(RangeError);
     expect(() => createGame({ now: 0, config: { squishPrice: 2.5 } })).toThrow(RangeError);
+  });
+});
+
+describe('first-move timer (as on lichess)', () => {
+  const LIMIT = 20_000;
+  const T0 = 1_000_000;
+
+  it("gives white the limit from the start, then black the limit from white's move", () => {
+    let g = createGame({ now: T0 });
+    expect(firstMoveDue(g, T0, LIMIT)).toEqual({ color: 'white', deadline: T0 + LIMIT });
+    g = mv(g, 'white', 'e2e4', T0 + 15_000);
+    expect(firstMoveDue(g, T0, LIMIT)).toEqual({ color: 'black', deadline: T0 + 15_000 + LIMIT });
+    g = mv(g, 'black', 'e7e5', T0 + 30_000);
+    expect(firstMoveDue(g, T0, LIMIT)).toBeNull();
+  });
+
+  it('is gone once the game is over', () => {
+    const g = act(createGame({ now: T0 }), 'white', { type: 'resign' }, T0 + 1_000);
+    expect(firstMoveDue(g, T0, LIMIT)).toBeNull();
+  });
+
+  it('aborts with no winner and leaves a finished game alone', () => {
+    const g = mv(createGame({ now: T0 }), 'white', 'e2e4', T0 + 1_000);
+    const aborted = abortGame(g, T0 + 25_000);
+    expect(aborted.status).toBe('aborted');
+    expect(aborted.winner).toBeUndefined();
+    expect(errorOf(aborted, 'black', { type: 'move', uci: 'e7e5' }, T0 + 26_000)).toBe('game-over');
+    const resigned = act(g, 'black', { type: 'resign' }, T0 + 2_000);
+    expect(abortGame(resigned, T0 + 25_000)).toBe(resigned);
   });
 });

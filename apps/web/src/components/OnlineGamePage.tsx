@@ -4,7 +4,7 @@ import type { GameSettings } from '@bugshop/protocol';
 import { sessionFor } from '../online/session';
 import { navigate } from '../router';
 import { useNow } from '../game/useNow';
-import { colorName, errorText } from '../game/view';
+import { colorName, errorText, firstMoveText } from '../game/view';
 import { SeedIcon, ShoeIcon } from './icons';
 import { accountStore } from '../account/store';
 import { GameView } from './GameView';
@@ -59,6 +59,9 @@ export function OnlineGamePage({ roomId }: { roomId: string }) {
   const label = (c: Color) => players?.[c]?.name ?? (c === me ? `You (${colorName(c)})` : `Opponent (${colorName(c)})`);
   const playing = view.game.status === 'playing';
   const mine = ratings?.[me];
+  // As on lichess: each player has a short time for their first move, or the game is aborted.
+  const due = playing ? view.snapshot?.firstMove : null;
+  const firstMoveNote = due ? firstMoveText(due.color === me, label(due.color), due.deadline - now) : null;
   const resultNote = playing
     ? undefined
     : mine
@@ -78,7 +81,7 @@ export function OnlineGamePage({ roomId }: { roomId: string }) {
           ? 'Connection lost. Reconnecting…'
           : view.status === 'closed'
             ? (view.error ?? 'Disconnected.')
-            : view.rejection && errorText(view.rejection)
+            : (view.rejection && errorText(view.rejection)) || firstMoveNote
       }
       label={label}
       seats={view.snapshot?.seats}

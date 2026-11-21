@@ -217,7 +217,10 @@ describe('per-game settings', () => {
 describe('hidden pockets', () => {
   it("never sends a player the opponent's pocket, purchases or spending until the game ends", async () => {
     const { white, black } = await startPrivateGame();
+    // Opening moves first: a 3-minute think over a first move would abort the game.
     await act(white, { type: 'move', uci: 'e2e4' });
+    await act(black, { type: 'move', uci: 'e7e5' });
+    await act(white, { type: 'move', uci: 'g1f3' });
     advanceServerClockForTests(3 * MIN + 1000); // Black thinks; White earns 3 coins
     await act(white, { type: 'buy', role: 'knight' });
     await white.waitFor(s => s.game!.history.some(e => e.type === 'buy'), 'own purchase visible');
@@ -262,24 +265,27 @@ describe('server-authoritative play', () => {
 
   it('earns coins from the opponent clock on the server, allowing off-turn purchases and drops', async () => {
     const { white, black } = await startPrivateGame();
+    // Opening moves first: a 3-minute think over a first move would abort the game.
     await act(white, { type: 'move', uci: 'e2e4' });
+    await act(black, { type: 'move', uci: 'e7e5' });
+    await act(white, { type: 'move', uci: 'g1f3' });
     advanceServerClockForTests(3 * MIN + 1000); // Black thinks for 3 minutes
     await expect(act(white, { type: 'buy', role: 'knight' })).resolves.toBe(true); // White buys on Black's turn
-    await act(black, { type: 'move', uci: 'e7e5' });
-    await expect(act(white, { type: 'move', uci: 'N@f3' })).resolves.toBe(true);
-    const own = await white.waitFor(s => s.game!.history.length === 4, 'drop broadcast');
-    expect(own.game!.history.map(e => e.type)).toEqual(['move', 'buy', 'move', 'move']);
+    await act(black, { type: 'move', uci: 'b8c6' });
+    await expect(act(white, { type: 'move', uci: 'N@d5' })).resolves.toBe(true);
+    const own = await white.waitFor(s => s.game!.history.length === 6, 'drop broadcast');
+    expect(own.game!.history.map(e => e.type)).toEqual(['move', 'move', 'move', 'buy', 'move', 'move']);
     expect(own.game!.spent.white).toBe(3);
     // Black never saw the purchase, only the drop itself.
-    const theirs = await black.waitFor(s => s.game!.history.length === 3, 'drop seen by black');
-    expect(theirs.game!.history.at(-1)).toMatchObject({ type: 'move', san: 'N@f3' });
+    const theirs = await black.waitFor(s => s.game!.history.length === 5, 'drop seen by black');
+    expect(theirs.game!.history.at(-1)).toMatchObject({ type: 'move', san: 'N@d5' });
     await white.room.leave();
     await black.room.leave();
   });
 
   it('does not start the clock until the first move', async () => {
     const { white, black } = await startPrivateGame();
-    advanceServerClockForTests(30 * MIN); // White never makes a first move
+    advanceServerClockForTests(15_000); // White thinks about the first move (inside the 20 s allowed)
     expect(await rejection(black, { type: 'squish' })).toBe('not-enough-coins');
     await act(white, { type: 'move', uci: 'e2e4' });
     const s = await black.waitFor(s => s.game!.history.length === 1, 'first move');
@@ -299,6 +305,61 @@ describe('server-authoritative play', () => {
     expect(s.game).toMatchObject({ status: 'squish', winner: 'black' });
     await white.room.leave();
     await black.room.leave();
+  });
+});
+
+describe('first-move timer (as on lichess)', () => {
+  const withFirstMoveLimit = async (ms: number, run: () => Promise<void>) => {
+    const saved = BugshopRoom.settings;
+    BugshopRoom.settings = { ...saved, firstMoveMs: ms };
+    try {
+      await run();
+    } finally {
+      BugshopRoom.settings = saved;
+    }
+  };
+
+  it('aborts the game, unrated, when white never moves', () =>
+    withFirstMoveLimit(400, async () => {
+      const { white, black } = await startPrivateGame();
+      expect(white.snapshot().firstMove).toMatchObject({ color: 'white' });
+      const s = await black.waitFor(s => s.game!.status !== 'playing', 'abort');
+      expect(s.game!.status).toBe('aborted');
+      expect(s.game!.winner).toBeUndefined();
+      expect(s.ratings).toBeNull();
+      expect(s.firstMove).toBeNull();
+      await white.room.leave();
+      await black.room.leave();
+    }));
+
+  it("gives black its own time after white's first move, then stops", () =>
+    withFirstMoveLimit(400, async () => {
+      const { white, black } = await startPrivateGame();
+      await act(white, { type: 'move', uci: 'e2e4' });
+      const due = await black.waitFor(s => s.firstMove?.color === 'black', 'black due');
+      expect(due.firstMove!.deadline).toBeGreaterThan(due.serverNow);
+      const s = await white.waitFor(s => s.game!.status !== 'playing', 'abort');
+      expect(s.game!.status).toBe('aborted');
+      await white.room.leave();
+      await black.room.leave();
+    }));
+
+  it('refuses a first move that comes too late, and leaves a started game alone', async () => {
+    const { white, black } = await startPrivateGame();
+    advanceServerClockForTests(21_000);
+    expect(await rejection(white, { type: 'move', uci: 'e2e4' })).toBe('game-over');
+    expect((await black.waitFor(s => s.game!.status !== 'playing', 'abort')).game!.status).toBe('aborted');
+    await white.room.leave();
+    await black.room.leave();
+
+    const g = await startPrivateGame();
+    await act(g.white, { type: 'move', uci: 'e2e4' });
+    await act(g.black, { type: 'move', uci: 'e7e5' });
+    expect((await g.white.waitFor(s => s.game!.history.length === 2, 'two moves')).firstMove).toBeNull();
+    advanceServerClockForTests(5 * MIN);
+    await expect(act(g.white, { type: 'move', uci: 'g1f3' })).resolves.toBe(true);
+    await g.white.room.leave();
+    await g.black.room.leave();
   });
 });
 

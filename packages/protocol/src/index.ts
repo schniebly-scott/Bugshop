@@ -121,6 +121,11 @@ export interface Snapshot {
    * (it ended before both players had moved).
    */
   ratings: ByColor<RatingChange> | null;
+  /**
+   * Whose first move is due and by when (server ms), as on lichess: miss it and
+   * the game is aborted (unrated). `null` once both players have moved.
+   */
+  firstMove: { color: Color; deadline: number } | null;
   /** Server time when the snapshot was sent (ms since epoch). */
   serverNow: number;
 }
@@ -136,6 +141,8 @@ export type ActionRejection = RuleError | 'not-started' | 'not-a-player';
 export const Limits = {
   /** Seconds a dropped player has to reconnect before their seat is given up. */
   reconnectSeconds: 600,
+  /** Seconds each player has for their first move before the game is aborted. */
+  firstMoveSeconds: 20,
 } as const;
 
 // ---------- accounts (HTTP API on the game server) ----------

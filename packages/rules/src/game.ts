@@ -13,7 +13,9 @@ export type GameStatus =
   | 'fiftyMoves'
   | 'resign'
   | 'squish'
-  | 'drawAgreed';
+  | 'drawAgreed'
+  /** A player didn't make their first move in time (online games only; see firstMoveDue). No winner. */
+  | 'aborted';
 
 export type GameEvent =
   | { type: 'move'; by: Color; uci: string; san: string; at: number }
@@ -164,6 +166,25 @@ const endGame = (state: GameState, now: number, status: GameStatus, winner?: Col
 };
 
 const fail = (error: RuleError): ActionResult => ({ ok: false, error });
+
+/**
+ * As on lichess, each player has a limited time for their first move: the
+ * side to move first from the start of the game (`startedAt`), then the other
+ * side from that first move. Returns whose first move is still due and by when
+ * (ms), or null once both sides have moved or the game is over. Buying doesn't
+ * count, only moves and drops (nobody has seeds before the first move anyway).
+ */
+export const firstMoveDue = (state: GameState, startedAt: number, limitMs: number): { color: Color; deadline: number } | null => {
+  if (state.status !== 'playing') return null;
+  const moves = state.history.filter(e => e.type === 'move');
+  if (moves.length >= 2) return null;
+  const from = moves.length === 0 ? startedAt : moves[0]!.at;
+  return { color: turnOf(state), deadline: from + limitMs };
+};
+
+/** End a game whose first move came too late (see firstMoveDue): no winner, and never rated. */
+export const abortGame = (state: GameState, now: number): GameState =>
+  state.status === 'playing' ? endGame(state, now, 'aborted') : state;
 
 /**
  * Apply `action` performed by `by` at time `now` (ms). Pure: returns a new state

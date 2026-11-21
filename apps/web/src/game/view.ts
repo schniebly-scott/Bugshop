@@ -74,5 +74,13 @@ export const resultText = (state: GameState): string | undefined => {
       return `${w} squished the opponent and wins.`;
     case 'drawAgreed':
       return 'Draw agreed.';
+    case 'aborted':
+      return 'Game aborted: a first move was not made in time.';
   }
+};
+
+/** The first-move countdown: a prompt for the player whose first move is due, a waiting note for the other. */
+export const firstMoveText = (mine: boolean, name: string, leftMs: number): string => {
+  const s = Math.max(0, Math.ceil(leftMs / 1000));
+  return mine ? `Your move! Make your first move within ${s} s, or the game is aborted.` : `Waiting for ${name}'s first move (${s} s).`;
 };

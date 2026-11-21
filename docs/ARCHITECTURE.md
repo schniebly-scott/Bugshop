@@ -154,6 +154,7 @@ chessops, chessground and Fairy-Stockfish are all **GPL-3.0**. That works if Bug
 |---|---|
 | Coins | You earn coins from the time your **opponent** uses: 1 coin per 60 s by default. **Chosen per game** from presets: 10, 25, 30, 45 or 60 s. |
 | Clock start | As on lichess, **no clock runs until the first move**: white's first move takes no time, and black's clock starts when it is played. Until then nobody earns coins, so nothing can be bought before the game begins. The same for every mode (online, bot, pass-and-play), because it lives in the rules engine (`newClock()` in `clock.ts`). The bot's pace-matching ignores that free first move. |
+| First move (online) | As on lichess, each player has **20 seconds for their first move**: white from the start of the game, black from white's first move. Miss it and the game is **aborted**: no winner, not rated. The server arms a timer and also refuses an overdue first move (`firstMoveDue`/`abortGame` in `game.ts`, `firstMoveMs` in `BugshopRoom`). Each snapshot carries `firstMove` (`{ color, deadline }` until both have moved), and the board shows a countdown. Bot and pass-and-play games have no such timer. |
 | Prices | Standard piece values: pawn 1, knight 3, bishop 3, rook 5, queen 9. |
 | Buying | Can be done **at any time, even on your opponent's turn**, and does **not** use your turn. The piece goes into your pocket. |
 | Dropping | Placing a piece from your pocket **uses your turn**. Drops follow bughouse rules: pawns can't be dropped on the 1st or 8th rank. Drops can give check and checkmate. |
